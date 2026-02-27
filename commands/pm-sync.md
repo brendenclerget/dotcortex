@@ -11,7 +11,7 @@ Push and pull task files to keep team members in sync.
 
 ### Step 1: Determine task storage mode
 
-Read `.claude/.localmem.json` and check `config.task_storage`:
+Read `.claude/.dotcortex.json` and check `config.task_storage`:
 - **same_repo:** Tasks are in TASKS_DIR tracked in the project repo. Sync = git add/commit/pull/push on the project repo, scoped to task files only.
 - **separate_repo:** Tasks are in TASKS_DIR with its own `.git`. Sync = git pull/push inside that directory.
 - **solo/gitignored:** No sync needed. Tell user and exit.

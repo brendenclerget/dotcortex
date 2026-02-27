@@ -4,7 +4,7 @@
 
 The core scaffolding and PM system.
 
-- [x] `/localmem-init` — Codebase scan, user interview, context scaffolding
+- [x] `/cortex-init` — Codebase scan, user interview, context scaffolding
 - [x] Ticket system — Simple, parent/child, follow-up tickets with counter management
 - [x] Commands — `/pm`, `/ticket-new`, `/ticket-breakdown`, `/ticket-refine`, `/next`, `/backlog`, `/standup`, `/pm-sync`
 - [x] Skills — pm-agent, backlog-cleanup, feature-planning, thinking-modes
@@ -14,7 +14,7 @@ The core scaffolding and PM system.
 - [x] Git autonomy levels — Write-only through full commit+push+PR
 - [x] Team sync — Solo, manual, auto-on-mutation, session bookends
 - [x] Install script — `install.sh` for one-command setup
-- [x] `/localmem-update` — Pull upstream changes while preserving user customizations
+- [x] `/cortex-update` — Pull upstream changes while preserving user customizations
 - [x] Follow-up tasks — `PREFIX-XXXa/b/c` for tasks discovered during work
 
 ## v1.1 — Polish & DX
@@ -30,10 +30,10 @@ Improvements from real-world usage.
 
 ## v1.2 — MCP Integrations
 
-Connect localmem's local ticket system to cloud project management tools via MCP servers.
+Connect dotcortex's local ticket system to cloud project management tools via MCP servers.
 
 ### Linear Integration
-- [ ] **MCP server: `localmem-linear`**
+- [ ] **MCP server: `dotcortex-linear`**
   - Sync local tickets → Linear issues (bidirectional)
   - Map ticket status (TODO/IN_PROGRESS/DONE) to Linear workflow states
   - Map priority levels
@@ -47,7 +47,7 @@ Connect localmem's local ticket system to cloud project management tools via MCP
 - [ ] **Init question** — "Do you use Linear? Connect for cloud sync."
 
 ### Jira Integration
-- [ ] **MCP server: `localmem-jira`**
+- [ ] **MCP server: `dotcortex-jira`**
   - Sync local tickets → Jira issues
   - Map ticket types to Jira issue types (Story, Task, Sub-task, Bug)
   - Map parent/child → Jira epic/story hierarchy
@@ -60,7 +60,7 @@ Connect localmem's local ticket system to cloud project management tools via MCP
 - [ ] **Init question** — "Do you use Jira? Connect for cloud sync."
 
 ### GitHub Issues/Projects Integration
-- [ ] **MCP server: `localmem-github`**
+- [ ] **MCP server: `dotcortex-github`**
   - Sync local tickets → GitHub Issues
   - Map parent tickets → GitHub Project cards
   - Map subtasks → task lists in issue body
@@ -98,8 +98,8 @@ Support for teams where multiple Claude Code instances work on the same codebase
 
 ## Future Ideas (Unprioritized)
 
-- **`npx localmem init`** — npm package for zero-clone install
-- **`brew install localmem`** — Homebrew formula
+- **`npx dotcortex init`** — npm package for zero-clone install
+- **`brew install dotcortex`** — Homebrew formula
 - **VS Code extension** — Sidebar for ticket management, backlog visualization
 - **Cursor integration** — Cursor-specific rules generation alongside CLAUDE.md
 - **Multi-repo monorepo support** — Shared task system across related repositories

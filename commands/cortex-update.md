@@ -1,17 +1,17 @@
 ---
-name: localmem-update
-description: Check for and apply updates from the localmem repository while preserving user customizations
+name: cortex-update
+description: Check for and apply updates from the dotcortex repository while preserving user customizations
 ---
 
-# localmem-update: Update Managed Files
+# cortex-update: Update Managed Files
 
-Update localmem-managed commands, skills, and templates from the latest upstream release while preserving user customizations.
+Update dotcortex-managed commands, skills, and templates from the latest upstream release while preserving user customizations.
 
 ## Process
 
 ### Step 1: Read Config
 
-Read `.claude/.localmem.json` from the project root. If it doesn't exist, stop and tell the user to run `/localmem-init` first.
+Read `.claude/.dotcortex.json` from the project root. If it doesn't exist, stop and tell the user to run `/cortex-init` first.
 
 Extract:
 - `source` — GitHub repo URL
@@ -25,10 +25,10 @@ Extract:
 ```bash
 # Clone to temp directory, shallow, latest only
 TEMP_DIR=$(mktemp -d)
-git clone --depth 1 "$SOURCE_REPO" "$TEMP_DIR/localmem"
+git clone --depth 1 "$SOURCE_REPO" "$TEMP_DIR/dotcortex"
 
 # Get the latest tag
-cd "$TEMP_DIR/localmem"
+cd "$TEMP_DIR/dotcortex"
 LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
 ```
 
@@ -39,7 +39,7 @@ If `LATEST_TAG` equals the installed version, report "Already up to date" and cl
 For each file in `managed_files`:
 
 1. **Render the new upstream version:**
-   - Read the corresponding file from `$TEMP_DIR/localmem/`
+   - Read the corresponding file from `$TEMP_DIR/dotcortex/`
    - Replace all instances of `PREFIX` with `config.prefix`
    - Replace all instances of `TASKS_DIR` with `config.tasks_dir`
 
@@ -64,7 +64,7 @@ new_hash       = sha256(new rendered file)    # what upstream looks like now
 
 ### Step 4: Check for New Files
 
-Compare the file list in the new localmem against `managed_files`. Any file in the new version that isn't in `managed_files` is a new addition.
+Compare the file list in the new dotcortex against `managed_files`. Any file in the new version that isn't in `managed_files` is a new addition.
 
 For each new file:
 - Show the file name and a one-line description
@@ -105,7 +105,7 @@ For each file being updated (auto-updates + user-approved overwrites):
 
 ### Step 7: Update Config
 
-Update `.claude/.localmem.json`:
+Update `.claude/.dotcortex.json`:
 - Set `version` to the new tag
 - Set `updated_at` to today's date
 - Update `managed_files` with new checksums for all updated files
@@ -119,7 +119,7 @@ rm -rf "$TEMP_DIR"
 
 Print summary:
 ```
-localmem updated: v1.0.0 → v1.2.0
+dotcortex updated: v1.0.0 → v1.2.0
 
 Auto-updated (no conflicts):
   ✓ .claude/commands/next.md
@@ -141,7 +141,7 @@ Skipped (user declined):
 
 ## File Mapping
 
-The update command needs to know which localmem source file maps to which installed file. The mapping follows this pattern:
+The update command needs to know which dotcortex source file maps to which installed file. The mapping follows this pattern:
 
 | Localmem source | Installed at |
 |---|---|
@@ -152,8 +152,8 @@ The update command needs to know which localmem source file maps to which instal
 ## Edge Cases
 
 - **User deleted a managed file:** Ask "This file was removed. Reinstall from upstream? / Skip"
-- **localmem repo unreachable:** Report error, suggest checking network or repo URL
+- **dotcortex repo unreachable:** Report error, suggest checking network or repo URL
 - **No git tags on upstream:** Use commit hash as version identifier instead
-- **Config file corrupted:** Offer to re-run `/localmem-init` with augment mode
+- **Config file corrupted:** Offer to re-run `/cortex-init` with augment mode
 
 Arguments: $ARGUMENTS

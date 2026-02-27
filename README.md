@@ -1,10 +1,14 @@
-# localmem
+# .cortex
 
-Portable context management for [Claude Code](https://claude.com/claude-code). Scaffolds the full `.claude/` context structure — skills, knowledge, memory, and optional task management — tailored to your detected stack.
+Give Claude Code a brain for your codebase.
+
+`.cortex` scans your project, interviews you about your workflow, and scaffolds the full `.claude/` context structure — skills, knowledge, memory, and optional task management — tailored to your stack.
+
+One command. Persistent context. Every session starts smarter.
 
 ## What It Does
 
-`/localmem-init` scans your codebase, interviews you about your workflow, researches your detected stack, and generates:
+`/cortex-init` scans your codebase, asks a few questions, researches your detected stack, and generates:
 
 - **`CLAUDE.md`** — Project rules and guardrails
 - **`.claude/memory/MEMORY.md`** — Persistent memory index (always loaded)
@@ -12,43 +16,32 @@ Portable context management for [Claude Code](https://claude.com/claude-code). S
 - **`.claude/skills/`** — Framework-specific domain skills
 - **`.tasks/`** — Ticket-based task management (optional, path configurable)
 
-## Installation
-
-1. Clone this repo somewhere on your machine:
+## Quick Start
 
 ```bash
-git clone https://github.com/brendenclerget/localmem.git ~/localmem
+# Clone dotcortex
+git clone https://github.com/brendenclerget/dotcortex.git ~/dotcortex
+
+# Install into your project
+~/dotcortex/install.sh /path/to/your/project
+
+# Open Claude Code and run:
+/cortex-init
 ```
 
-2. Run the install script, pointing it at your project:
-
-```bash
-~/localmem/install.sh /path/to/your/project
-```
-
-This copies two files into your project's `.claude/commands/`:
-- `localmem-init.md` — the bootstrap command
-- `localmem-update.md` — the update command
-
-3. Open Claude Code in your project and run:
-
-```
-/localmem-init
-```
-
-The init command scans your codebase, interviews you about your workflow, and scaffolds everything.
+That's it. The init command scans your codebase, interviews you about your workflow, and scaffolds everything.
 
 ## Updating
 
-When new versions of localmem are released, run `/localmem-update` inside Claude Code. It will:
+Run `/cortex-update` inside Claude Code. It will:
 
-1. Pull the latest localmem from GitHub to a temp directory
+1. Pull the latest dotcortex from GitHub
 2. Compare each managed file against what's installed
 3. Auto-update files you haven't modified
 4. Show you conflicts where both upstream and your version changed
 5. Let you choose: keep yours, take upstream, or review the diff
 
-Your project-specific files (CLAUDE.md, MEMORY.md, knowledge, domain skills) are never touched by updates — only the commands, PM skills, and templates that came from localmem.
+Your project-specific files (CLAUDE.md, MEMORY.md, knowledge, domain skills) are never touched — only the commands, PM skills, and templates that came from dotcortex.
 
 ## What Gets Generated
 
@@ -130,16 +123,16 @@ You can also manually add entries anytime.
 
 ## Non-Destructive
 
-If `.claude/` already exists, `/localmem-init` detects it and offers to augment rather than overwrite. Existing files are preserved unless you explicitly choose to replace them.
+If `.claude/` already exists, `/cortex-init` detects it and offers to augment rather than overwrite. Existing files are preserved unless you explicitly choose to replace them.
 
 ## Project Structure
 
 ```
-localmem/
+dotcortex/
 ├── install.sh                    # Install script
 ├── commands/
-│   ├── localmem-init.md          # Bootstrap command
-│   ├── localmem-update.md        # Update command
+│   ├── cortex-init.md            # Bootstrap command
+│   ├── cortex-update.md          # Update command
 │   ├── pm.md                     # Core PM commands
 │   ├── ticket-new.md             # Feature + subtask creation
 │   ├── ticket-breakdown.md       # Break ticket into subtasks

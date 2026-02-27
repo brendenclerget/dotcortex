@@ -1,4 +1,4 @@
-# How localmem Works
+# How dotcortex Works
 
 ## The Context System
 
@@ -34,7 +34,7 @@ Self-contained guides for specific domains. Each skill has:
 - **Patterns** — How things should be done in this project
 - **Gotchas** — Known pitfalls
 
-Skills are generated based on your detected stack during `/localmem-init` and enriched over time.
+Skills are generated based on your detected stack during `/cortex-init` and enriched over time.
 
 ### Knowledge Files
 Detailed reference material organized by domain. Unlike skills (which are prescriptive), knowledge files are descriptive — they document what exists, what was decided, and what to watch out for.
@@ -56,7 +56,7 @@ A lightweight, file-based ticket system. Each ticket is a markdown file with sta
 
 ## The Init Flow
 
-`/localmem-init` runs through 5 phases:
+`/cortex-init` runs through 5 phases:
 
 1. **Scan** — Detects languages, frameworks, project structure, existing docs
 2. **Interview** — Asks about project purpose, workflow rules, task management preferences

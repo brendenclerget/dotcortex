@@ -238,7 +238,7 @@ Brief 1-2 sentence summary.
 
 ## Team Sync
 
-If team sync is configured (check `.claude/.localmem.json` → `config.team_sync`), follow these rules:
+If team sync is configured (check `.claude/.dotcortex.json` → `config.team_sync`), follow these rules:
 
 **Manual mode (`manual`):**
 - No automatic sync. User runs `/pm sync` when they want to push/pull.

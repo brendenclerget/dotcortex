@@ -1,4 +1,4 @@
-# localmem Backlog
+# dotcortex Backlog
 
 **Last Updated:** 2026-02-27
 
@@ -6,14 +6,14 @@
 
 ## Next Up
 
-- [ ] **Pick a name** — Candidates: Lyra, Mira, Elara, Theia (or keep exploring). Rename repo, README, install script, watermarks, all references.
-- [ ] **Create GitHub repo** — `brendenclerget/<name>`, push initial commit, verify install.sh works from fresh clone.
+- [x] **Pick a name** — `.cortex` / `dotcortex`. Done.
+- [ ] **Create GitHub repo** — `brendenclerget/dotcortex`, push initial commit, verify install.sh works from fresh clone.
 - [ ] **Push card-tracker-rn main** — `.claude/` port is committed locally but not pushed upstream yet.
 
 ## v1.1 — Polish & DX
 
-- [ ] Dry-run mode for `/localmem-init` (show what would be created without writing)
-- [ ] `/localmem-doctor` command — validate config, check for orphaned files, verify skill triggers
+- [ ] Dry-run mode for `/cortex-init` (show what would be created without writing)
+- [ ] `/cortex-doctor` command — validate config, check for orphaned files, verify skill triggers
 - [ ] Improve install story (npm/brew package?)
 
 ## v1.2 — MCP Integrations
