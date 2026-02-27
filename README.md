@@ -1,162 +1,208 @@
-# .cortex
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/brendenclerget/dotcortex/raw/main/.github/logo-dark.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/brendenclerget/dotcortex/raw/main/.github/logo-light.svg">
+    <img alt=".cortex" src="https://github.com/brendenclerget/dotcortex/raw/main/.github/logo-light.svg" width="280">
+  </picture>
+</p>
 
-Give Claude Code a brain for your codebase.
+<p align="center">
+  <strong>Give Claude Code a brain for your codebase.</strong>
+</p>
 
-`.cortex` scans your project, interviews you about your workflow, and scaffolds the full `.claude/` context structure — skills, knowledge, memory, and optional task management — tailored to your stack.
+<p align="center">
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#what-gets-generated">What Gets Generated</a> ·
+  <a href="#task-management">Task Management</a> ·
+  <a href="#team-sync">Team Sync</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/brendenclerget/dotcortex/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/built%20for-Claude%20Code-blueviolet" alt="Built for Claude Code"></a>
+</p>
+
+---
+
+`.cortex` scans your project, interviews you about your workflow, and scaffolds the full `.claude/` context structure — **skills, knowledge, memory, and task management** — tailored to your detected stack.
 
 One command. Persistent context. Every session starts smarter.
-
-## What It Does
-
-`/cortex-init` scans your codebase, asks a few questions, researches your detected stack, and generates:
-
-- **`CLAUDE.md`** — Project rules and guardrails
-- **`.claude/memory/MEMORY.md`** — Persistent memory index (always loaded)
-- **`.claude/knowledge/`** — Extracted project knowledge files
-- **`.claude/skills/`** — Framework-specific domain skills
-- **`.tasks/`** — Ticket-based task management (optional, path configurable)
 
 ## Quick Start
 
 ```bash
-# Clone dotcortex
+# 1. Clone dotcortex
 git clone https://github.com/brendenclerget/dotcortex.git ~/dotcortex
 
-# Install into your project
+# 2. Install into your project
 ~/dotcortex/install.sh /path/to/your/project
 
-# Open Claude Code and run:
+# 3. Open Claude Code in your project and run:
 /cortex-init
 ```
 
-That's it. The init command scans your codebase, interviews you about your workflow, and scaffolds everything.
+The init command walks you through a short interview, scans your codebase, and generates everything.
 
-## Updating
+## How It Works
 
-Run `/cortex-update` inside Claude Code. It will:
-
-1. Pull the latest dotcortex from GitHub
-2. Compare each managed file against what's installed
-3. Auto-update files you haven't modified
-4. Show you conflicts where both upstream and your version changed
-5. Let you choose: keep yours, take upstream, or review the diff
-
-Your project-specific files (CLAUDE.md, MEMORY.md, knowledge, domain skills) are never touched — only the commands, PM skills, and templates that came from dotcortex.
+```
+┌─────────────────────────────────────────────────────┐
+│  /cortex-init                                       │
+│                                                     │
+│  1. Scan     Detect languages, frameworks, ORM,     │
+│              project structure, existing docs       │
+│                                                     │
+│  2. Interview  Ask about workflow, guardrails,      │
+│                task management preferences          │
+│                                                     │
+│  3. Research   Generate framework-specific skills   │
+│                based on your actual stack            │
+│                                                     │
+│  4. Generate   Write CLAUDE.md, memory, knowledge,  │
+│                skills, and optional PM system        │
+│                                                     │
+│  5. Summary    Report what was created              │
+└─────────────────────────────────────────────────────┘
+```
 
 ## What Gets Generated
 
 ### Always Created
 
 | File | Purpose |
-|------|---------|
+|:-----|:--------|
 | `CLAUDE.md` | Project overview, workflow rules, quick start commands |
 | `.claude/memory/MEMORY.md` | Repo layout, workflow prefs, knowledge index |
-| `.claude/knowledge/architecture-decisions.md` | ADRs (starts empty) |
-| `.claude/knowledge/patterns-and-gotchas.md` | Technical footguns (starts empty) |
+| `.claude/knowledge/architecture-decisions.md` | ADRs — starts empty, fills up as you work |
+| `.claude/knowledge/patterns-and-gotchas.md` | Technical footguns and fixes |
 
-### Stack-Dependent
+### Stack-Detected Skills
 
-Additional knowledge and skill files based on detected frameworks:
+`.cortex` detects your stack and generates domain skills with real best practices — not boilerplate.
 
-| Detected Stack | Files Generated |
-|---------------|----------------|
-| Rails | `skills/rails-backend/SKILL.md`, `knowledge/api-patterns.md` |
-| Next.js | `skills/nextjs/SKILL.md`, `knowledge/frontend-patterns.md` |
-| React Native + Expo | `skills/react-native/SKILL.md`, `knowledge/frontend-patterns.md` |
-| Django / FastAPI | `skills/python-backend/SKILL.md`, `knowledge/api-patterns.md` |
-| Go | `skills/go-backend/SKILL.md`, `knowledge/api-patterns.md` |
-| Any database ORM | `knowledge/data-model.md` |
+| Detected | Generated Skill | Knowledge |
+|:---------|:----------------|:----------|
+| Rails | `rails-backend` | `api-patterns.md` |
+| Next.js | `nextjs` | `frontend-patterns.md` |
+| React Native / Expo | `react-native` | `frontend-patterns.md` |
+| Django / FastAPI | `python-backend` | `api-patterns.md` |
+| Go (gin, chi, echo) | `go-backend` | `api-patterns.md` |
+| Any ORM | — | `data-model.md` |
 
-### Optional: Task Management
+Skills auto-invoke based on context keywords. Mention "backend" or "migration" and the Rails skill loads automatically. They start generic and get enriched with project-specific patterns as you work.
 
-If you opt in, you also get:
+## Task Management
 
-- `.tasks/` — Ticket files, backlog, templates, archive (path configurable)
-- `.claude/skills/pm-agent/SKILL.md` — PM workflow skill
-- `.claude/skills/backlog-cleanup/SKILL.md` — Backlog regeneration and triage
-- `.claude/skills/feature-planning/SKILL.md` — PRD-driven planning with specs
-- `.claude/skills/thinking-modes/SKILL.md` — Extended thinking budget guidance
-- `.claude/commands/pm.md` — Core PM commands (`/pm new`, `/pm done`, etc.)
-- `.claude/commands/ticket-new.md` — Create parent ticket with subtask breakdown
-- `.claude/commands/ticket-breakdown.md` — Break existing ticket into subtasks
-- `.claude/commands/ticket-refine.md` — Review progress and update ticket state from git
-- `.claude/commands/next.md` — Get recommendations on what to work on next
-- `.claude/commands/backlog.md` — Show current prioritized backlog
-- `.claude/commands/standup.md` — Progress summary from git + ticket state
-- `.claude/commands/pm-sync.md` — Push/pull task state with remote (if team sync enabled)
+> *Optional — you choose during init.*
+
+A lightweight, file-based ticket system that lives in your repo. No external tools, no context switching.
+
+```
+.tasks/
+├── .ticket_counter
+├── BACKLOG.md
+├── APP-001-auth-flow/
+│   ├── APP-001-auth-flow.md          # parent ticket
+│   ├── APP-002-login-endpoint.md     # subtask
+│   └── APP-003-session-management.md # subtask
+├── APP-004-fix-cors.md               # standalone ticket
+└── archive/2026-02/                  # completed work
+```
+
+### PM Commands
+
+| Command | What It Does |
+|:--------|:-------------|
+| `/pm new <desc>` | Create a ticket |
+| `/pm done <id>` | Mark complete and archive |
+| `/pm status` | Show all tickets by status |
+| `/ticket-new` | Create parent ticket with subtask breakdown |
+| `/ticket-breakdown <id>` | Break existing ticket into subtasks |
+| `/ticket-refine <id>` | Update ticket state from git history |
+| `/next` | Get a recommendation on what to work on |
+| `/backlog` | Show prioritized backlog |
+| `/standup` | Progress summary from git + ticket state |
+
+### Follow-Up Tasks
+
+Tasks discovered during work get suffixed to the parent: `APP-045a`, `APP-045b`. They don't consume the ticket counter and stay grouped with the work that spawned them.
+
+## Knowledge System
+
+Knowledge files start empty and grow organically:
+
+- **On ticket completion** — the PM skill extracts lasting learnings (gotchas, decisions, patterns)
+- **Manual entries** — add patterns directly anytime
+- **Cross-session** — everything persists in `.claude/` so the next session picks up where you left off
+
+```
+.claude/knowledge/
+├── architecture-decisions.md   # ADRs with context + consequences
+├── patterns-and-gotchas.md     # Technical surprises with fixes
+├── api-patterns.md             # API conventions, error formats
+├── frontend-patterns.md        # Component patterns, state mgmt
+└── data-model.md               # Schema conventions, query patterns
+```
 
 ## Git Tracking
 
-During setup, you choose independently whether to track each layer in git:
+During setup, you choose independently whether to track each layer:
 
-- **Commands** — shared or gitignored
-- **Skills** — shared or gitignored
-- **Knowledge** — shared or gitignored
-- **Memory** — shared or gitignored
-- **Tasks** — same repo, gitignored, or separate repo
+| Layer | Tracked | Use Case |
+|:------|:--------|:---------|
+| Commands | ✓ / ✗ | Share slash commands with team or keep personal |
+| Skills | ✓ / ✗ | Share context or keep personal |
+| Knowledge | ✓ / ✗ | Team knowledge base or personal notes |
+| Memory | ✓ / ✗ | Shared index or per-developer |
+| Tasks | repo / ignore / separate | Flexible task storage |
 
 ## Team Sync
 
-If multiple engineers use Claude Code on the same project, tasks can sync automatically. During init you choose:
+Multiple engineers using Claude Code on the same project? Tasks can sync:
 
-- **Solo** — no sync, you're the only one
-- **Manual** — run `/pm sync` when you want to push/pull
-- **Auto on mutation** — pushes after ticket creates/updates, pulls before reads
-- **Session bookends** — pulls at session start, pushes at session end
+| Mode | Behavior |
+|:-----|:---------|
+| **Solo** | No sync — you're the only one |
+| **Manual** | Run `/pm sync` when you want to push/pull |
+| **Auto on mutation** | Pushes after creates/updates, pulls before reads |
+| **Session bookends** | Pulls at session start, pushes at session end |
 
-## How Skills Work
+## Updating
 
-Generated skills auto-invoke based on context keywords. For example, a Rails skill triggers when you mention "backend", "API", or "migration". Skills contain:
+```bash
+# Inside Claude Code:
+/cortex-update
+```
 
-- Framework conventions and best practices
-- Common gotchas specific to the framework
-- File structure expectations
-- Patterns to follow (and anti-patterns to avoid)
-
-Skills start generic and get enriched with project-specific patterns as you work.
-
-## How Knowledge Works
-
-Knowledge files start mostly empty and accumulate entries as you work. When completing tickets (if PM is enabled), the system extracts lasting learnings — gotchas, decisions, patterns — into the appropriate knowledge file.
-
-You can also manually add entries anytime.
+Pulls the latest dotcortex, auto-updates files you haven't modified, and walks you through conflicts where both upstream and your version changed. Your project-specific files are never touched.
 
 ## Non-Destructive
 
-If `.claude/` already exists, `/cortex-init` detects it and offers to augment rather than overwrite. Existing files are preserved unless you explicitly choose to replace them.
+If `.claude/` already exists, `/cortex-init` detects it and offers to **augment** rather than overwrite. Existing files are preserved unless you explicitly choose to replace them.
 
 ## Project Structure
 
 ```
 dotcortex/
-├── install.sh                    # Install script
+├── install.sh                    # One-command installer
 ├── commands/
 │   ├── cortex-init.md            # Bootstrap command
 │   ├── cortex-update.md          # Update command
 │   ├── pm.md                     # Core PM commands
-│   ├── ticket-new.md             # Feature + subtask creation
-│   ├── ticket-breakdown.md       # Break ticket into subtasks
-│   ├── ticket-refine.md          # Refine ticket from git state
-│   ├── next.md                   # What to work on next
-│   ├── backlog.md                # Show current backlog
-│   ├── standup.md                # Progress recap from git + tickets
-│   └── pm-sync.md               # Push/pull task state with remote
-├── skills/
-│   ├── pm-agent/SKILL.md         # PM workflow skill
-│   ├── backlog-cleanup/SKILL.md  # Backlog format spec
-│   ├── feature-planning/SKILL.md # PRD-driven planning
-│   └── thinking-modes/SKILL.md   # Thinking budget guidance
-├── templates/
-│   ├── simple-ticket-template.md
-│   ├── parent-ticket-template.md
-│   └── child-ticket-template.md
-├── scaffolds/
-│   ├── CLAUDE.md.template        # Reference template
-│   └── MEMORY.md.template        # Reference template
-└── docs/
-    └── how-it-works.md           # Detailed guide
+│   ├── ticket-new.md             # Feature planning
+│   ├── ticket-breakdown.md       # Subtask creation
+│   ├── ticket-refine.md          # Git-aware refinement
+│   ├── next.md                   # Work recommendations
+│   ├── backlog.md                # Backlog view
+│   ├── standup.md                # Progress recap
+│   └── pm-sync.md                # Team sync
+├── skills/                       # Installable skills
+├── templates/                    # Ticket templates
+├── scaffolds/                    # Reference scaffolds
+└── docs/                         # Documentation
 ```
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
