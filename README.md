@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/brendenclerget/dotcortex/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="https://github.com/brendenclerget/dotcortex/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT%20%2B%20Commons%20Clause-blue.svg" alt="MIT License"></a>
   <a href="https://claude.com/claude-code"><img src="https://img.shields.io/badge/built%20for-Claude%20Code-blueviolet" alt="Built for Claude Code"></a>
 </p>
 
@@ -205,4 +205,4 @@ dotcortex/
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT + Commons Clause — free to use, fork, and modify. Cannot be sold or repackaged as a paid product. See [LICENSE](LICENSE).
