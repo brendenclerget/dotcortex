@@ -309,7 +309,6 @@ Create all of these, replacing `PREFIX` with the chosen prefix from Q5 and `TASK
 - `.claude/skills/pm-agent/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/skills/backlog-cleanup/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/skills/feature-planning/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/skills/thinking-modes/SKILL.md` — Copy from dotcortex (no replacements needed)
 - `.claude/commands/pm.md` — Copy from dotcortex, replace PREFIX
 - `.claude/commands/ticket-new.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/ticket-breakdown.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
@@ -398,7 +397,7 @@ Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`
 
 **What counts as managed:**
 - All files from `commands/` (pm.md, ticket-*.md, next.md, backlog.md, standup.md, dotcortex-init.md, dotcortex-update.md)
-- PM skill files (pm-agent, backlog-cleanup, feature-planning, thinking-modes)
+- PM skill files (pm-agent, backlog-cleanup, feature-planning)
 - Template files (simple, parent, child ticket templates)
 
 **What is NOT managed (project-specific, never auto-updated):**

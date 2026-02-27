@@ -7,7 +7,7 @@ The core scaffolding and PM system.
 - [x] `/cortex-init` — Codebase scan, user interview, context scaffolding
 - [x] Ticket system — Simple, parent/child, follow-up tickets with counter management
 - [x] Commands — `/pm`, `/ticket-new`, `/ticket-breakdown`, `/ticket-refine`, `/next`, `/backlog`, `/standup`, `/pm-sync`
-- [x] Skills — pm-agent, backlog-cleanup, feature-planning, thinking-modes
+- [x] Skills — pm-agent, backlog-cleanup, feature-planning
 - [x] Dynamic skill generation — Framework-appropriate skills based on detected stack
 - [x] Configurable task directory — `.tasks/` default, user-named
 - [x] Configurable git tracking — Per-category (commands, skills, knowledge, memory, tasks)

@@ -123,7 +123,6 @@ dotcortex updated: v1.0.0 → v1.2.0
 
 Auto-updated (no conflicts):
   ✓ .claude/commands/next.md
-  ✓ .claude/skills/thinking-modes/SKILL.md
 
 Conflicts resolved:
   ✓ .claude/skills/pm-agent/SKILL.md — kept yours
