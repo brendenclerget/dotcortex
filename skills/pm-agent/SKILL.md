@@ -263,5 +263,6 @@ If team sync is configured (check `.claude/.dotcortex.json` → `config.team_syn
 - `/pm done PREFIX-XXX` - Complete & archive
 - `/pm status` - Show all by status
 - `/pm sync` - Push/pull task state with remote
+- `/ticket-close PREFIX-XXX` - Full close workflow (mark done, extract knowledge, archive, update backlog)
 - `/next` - Suggest what to work on
 - `/backlog` - Show current prioritized backlog

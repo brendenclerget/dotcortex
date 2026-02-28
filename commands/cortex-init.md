@@ -313,6 +313,7 @@ Create all of these, replacing `PREFIX` with the chosen prefix from Q5 and `TASK
 - `.claude/commands/ticket-new.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/ticket-breakdown.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/ticket-refine.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.claude/commands/ticket-close.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/next.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/backlog.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/standup.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
