@@ -43,6 +43,7 @@ Tickets (TASKS_DIR/PREFIX-XXX-feature-name.md)
 
 ## Acceptance Criteria
 - [ ] AC1: [Specific, testable criterion]
+- [ ] AC2: ...
 
 ## Technical Design
 
@@ -61,6 +62,10 @@ Tickets (TASKS_DIR/PREFIX-XXX-feature-name.md)
 - Unit tests
 - Integration tests
 - Manual QA steps
+
+## Rollout
+- Feature flag if needed
+- Gradual rollout plan
 
 ## Open Questions
 - Unresolved decisions
@@ -82,6 +87,10 @@ Tickets (TASKS_DIR/PREFIX-XXX-feature-name.md)
 - [ ] Subtask 2
 
 **Notes**: Implementation approach
+
+### 2. [Step Name]
+**Ticket**: PREFIX-YYY
+- [ ] Subtask 1
 
 ## Progress
 - Completed: X/Y steps
@@ -107,6 +116,14 @@ Tickets (TASKS_DIR/PREFIX-XXX-feature-name.md)
 
 5. **Reference in ticket:**
    Each ticket should reference its spec file
+
+### Ticket → Spec Linkage
+
+In ticket files (PREFIX-XXX.md), add:
+```markdown
+**Related Spec**: docs/specs/feature-name.md
+**Task Breakdown**: docs/tasks/feature-name-tasks.md
+```
 
 ## Extended Thinking Usage
 

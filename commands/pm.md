@@ -8,7 +8,7 @@ description: Project management ticket system commands
 Available commands:
 
 ## Task Management
-- `/pm new <description>` - Create new task (auto-assigns PREFIX-XXX)
+- `/pm new <description>` - Create a single ticket (auto-assigns PREFIX-XXX). **Always one ticket, never subtasks.** If the description suggests a multi-day feature, create the single ticket and recommend: "This looks like it needs breakdown — run `/ticket-breakdown PREFIX-XXX` when ready."
 - `/pm start PREFIX-XXX` - Mark task as in-progress, create branch
 - `/pm done PREFIX-XXX` - Mark complete, add git references
 - `/pm update PREFIX-XXX` - Update task file

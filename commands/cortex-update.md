@@ -16,7 +16,7 @@ Read `.claude/.dotcortex.json` from the project root. If it doesn't exist, stop 
 Extract:
 - `source` — GitHub repo URL
 - `version` — currently installed version tag
-- `config.prefix` — ticket prefix (e.g., "TCG")
+- `config.prefix` — ticket prefix (e.g., "APP")
 - `config.tasks_dir` — task directory path (e.g., ".tasks")
 - `managed_files` — map of file paths to checksums of what was installed
 
@@ -148,11 +148,38 @@ The update command needs to know which dotcortex source file maps to which insta
 | `skills/*/SKILL.md` | `.claude/skills/*/SKILL.md` |
 | `templates/*.md` | `TASKS_DIR/templates/*.md` (path from config) |
 
+### Step 9: Sync Multi-Tool Files
+
+If `config.tools` includes tools beyond `claude`, regenerate their derived files:
+
+**For each tool in `config.tools`:**
+
+| Tool | Action |
+|------|--------|
+| `codex` | Regenerate `AGENTS.md` from `CLAUDE.md`. Rebuild `.agents/skills/` symlinks — remove stale ones, create new ones for any added skills. |
+| `gemini` | Regenerate `GEMINI.md` from `CLAUDE.md`. Rebuild `.gemini/skills/` symlinks — same approach. |
+| `cursor` | Regenerate `AGENTS.md` if not already done for Codex. Rebuild `.cursor/rules/*.mdc` files from current `.claude/skills/*/SKILL.md` — delete `.mdc` files for removed skills, create new ones for added skills. |
+
+**Symlink rebuild process:**
+```bash
+# Remove all existing symlinks in target skills dir (don't touch non-symlink files)
+find .agents/skills -type l -delete 2>/dev/null
+
+# Recreate symlinks for each current skill
+for skill_dir in .claude/skills/*/; do
+  skill_name=$(basename "$skill_dir")
+  ln -s "../../.claude/skills/$skill_name" ".agents/skills/$skill_name"
+done
+```
+
+Report any tool-specific files updated in the Step 8 summary.
+
 ## Edge Cases
 
 - **User deleted a managed file:** Ask "This file was removed. Reinstall from upstream? / Skip"
 - **dotcortex repo unreachable:** Report error, suggest checking network or repo URL
 - **No git tags on upstream:** Use commit hash as version identifier instead
 - **Config file corrupted:** Offer to re-run `/cortex-init` with augment mode
+- **Tool added/removed since init:** If `config.tools` changed, run the appropriate setup/cleanup from Phase 4.8 of cortex-init
 
 Arguments: $ARGUMENTS

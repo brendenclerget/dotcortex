@@ -83,13 +83,24 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
 - If README.md was found, pre-populate a suggested description as the first option
 - Always include an "Other" option for free text
 
-**Q2: Confirm detected stack** (multi-select)
+**Q2: AI coding tools** (multi-select)
+- Question: "Which AI coding tools do you use? dotcortex will generate compatible config for each."
+- Header: "Tools"
+- Options:
+  - "Claude Code (Recommended)" — `.claude/` directory, `CLAUDE.md`
+  - "OpenAI Codex CLI" — `.agents/` directory, `AGENTS.md`
+  - "Gemini CLI" — `.gemini/` directory, `GEMINI.md`
+  - "Cursor" — `.cursor/rules/` directory, reads `AGENTS.md`
+
+At least one must be selected. Claude Code is pre-selected as the default since dotcortex runs inside it. If only Codex/Gemini/Cursor are selected without Claude Code, warn that dotcortex commands and skills are designed for Claude Code and may have reduced functionality in other tools.
+
+**Q3: Confirm detected stack** (multi-select)
 - Question: "Which of these detected technologies are correct? Deselect any false positives."
 - Header: "Stack"
 - Options: one per detected framework/language (pre-selected)
 - This lets users correct false positives from package.json scanning
 
-**Q3: Workflow rules** (multi-select)
+**Q4: Workflow rules** (multi-select)
 - Question: "Which workflow rules should Claude follow?"
 - Header: "Rules"
 - Options:
@@ -97,7 +108,7 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
   - "Don't create documentation files unless asked"
   - "Use [detected package manager] only" (show actual detected one)
 
-**Q4: Task management** (single select)
+**Q5: Task management** (single select)
 - Question: "Do you want ticket-based task tracking?"
 - Header: "Tasks"
 - Options:
@@ -105,7 +116,7 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
   - "Lightweight (just a TODO list in CLAUDE.md)"
   - "No task tracking"
 
-**Q5: Ticket prefix** (only if Q4 = full PM)
+**Q6: Ticket prefix** (only if Q5 = full PM)
 - Question: "What prefix should tickets use? (e.g., APP, PRJ, or leave blank for repo name)"
 - Header: "Prefix"
 - Options:
@@ -114,7 +125,7 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
   - "PRJ"
 - Allow free text via Other
 
-**Q5b: Task directory** (only if Q4 = full PM)
+**Q6b: Task directory** (only if Q5 = full PM)
 - Question: "Where should task files live?"
 - Header: "Task dir"
 - Options:
@@ -123,7 +134,7 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
   - "tasks/" — fully visible, no dot-prefix
 - Allow free text via Other for custom path
 
-**Q6: Git tracking** (multi-select, one row per category)
+**Q7: Git tracking** (multi-select, one row per category)
 - Question: "Which parts of your Claude context should be tracked in git? (Unselect to gitignore)"
 - Header: "Git tracking"
 - Options (each independently toggleable):
@@ -131,9 +142,9 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
   - "Skills (.claude/skills/)" — default: tracked
   - "Knowledge (.claude/knowledge/)" — default: tracked
   - "Memory (.claude/memory/MEMORY.md)" — default: tracked
-- Note: If task management is enabled (Q4), tasks are handled separately in Q7.
+- Note: If task management is enabled (Q5), tasks are handled separately in Q8.
 
-**Q7: Task git tracking** (single select, only if Q4 = full PM)
+**Q8: Task git tracking** (single select, only if Q5 = full PM)
 - Question: "How should task files be stored?"
 - Header: "Task git"
 - Options:
@@ -141,14 +152,14 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
   - "Gitignored — personal workflow only"
   - "Separate repo — independent of feature branches"
 
-**Q8: Key components** (free text)
+**Q9: Key components** (free text)
 - Question: "What are the main components/services? (e.g., 'API server, web frontend, worker queue')"
 - Header: "Components"
 - Options:
   - Auto-generated from directory scan (e.g., "Backend (api/), Frontend (web/), Workers (jobs/)")
   - Leave blank option
 
-**Q9: Git autonomy** (single select)
+**Q10: Git autonomy** (single select)
 - Question: "How far should Claude take code after completing work?"
 - Header: "Autonomy"
 - Options:
@@ -163,7 +174,7 @@ Based on selection, add the appropriate rules to CLAUDE.md:
 - Option 3: "After completing a task, stage, commit, and push to the current branch. Don't open PRs."
 - Option 4: "After completing a task, stage, commit, push, and open a draft PR."
 
-**Q10: Team sync** (single select, only if Q7 = same repo or separate repo)
+**Q11: Team sync** (single select, only if Q8 = same repo or separate repo)
 - Question: "How should task state sync across collaborators?"
 - Header: "Team sync"
 - Options:
@@ -183,7 +194,7 @@ Based on selection, configure the pm-agent skill's sync behavior:
   - "At the start of each session, pull latest task state before doing anything."
   - "Before ending a session, push all task file changes."
 
-**Q11: Guardrails** (free text)
+**Q12: Guardrails** (free text)
 - Question: "Anything else Claude should never do? (e.g., 'never modify the auth module', 'always use TypeScript strict mode')"
 - Header: "Guardrails"
 - Options:
@@ -192,7 +203,7 @@ Based on selection, configure the pm-agent skill's sync behavior:
 
 ## Phase 3: Stack Research & Skill Generation
 
-For each confirmed framework/technology from Q2, generate a domain skill file. **Do not use pre-written templates** — research the framework and write appropriate best practices.
+For each confirmed framework/technology from Q3, generate a domain skill file. **Do not use pre-written templates** — research the framework and write appropriate best practices.
 
 Each skill should include:
 
@@ -222,7 +233,7 @@ description: [one-line description]. Auto-invokes when discussing [trigger keywo
 - Framework-specific gotchas
 
 ## Project-Specific Notes
-[Woven in from Q9 component descriptions and scan results]
+[Woven in from component descriptions and scan results]
 ```
 
 **Examples of what to include by framework:**
@@ -254,18 +265,27 @@ This applies to: CLAUDE.md, MEMORY.md, all knowledge files, all generated skills
 
 Generate at the project root. Include:
 - Project overview from Q1
-- Stack summary from scan + Q2
+- Stack summary from scan + Q3
 - Component map from Q9
-- Workflow rules from Q3
-- Guardrails from Q10
+- Tool-specific files based on Q2 selections (see section 4.8)
+- Workflow rules from Q4
+- Guardrails from Q12
 - Quick start commands (infer from detected stack — e.g., `npm run dev`, `rails server`, `cargo run`)
 - Skill list with auto-invoke triggers
+
+**Always include these safety rules regardless of user selections:**
+```markdown
+## Git Safety
+
+**NEVER reset, checkout, or restore files from git without asking first.**
+Destructive git operations (`git checkout -- <file>`, `git reset --hard`, `git restore`, `git clean -f`) can silently discard uncommitted work from other sessions or agents. Always explain what will be lost and get explicit confirmation before running any command that discards local changes.
+```
 
 ### 4.2: .claude/memory/MEMORY.md
 
 Generate in `.claude/memory/`. Include:
 - Repository layout table (from scan — directories, what they contain)
-- Workflow preferences (from Q3)
+- Workflow preferences (from Q4)
 - Knowledge base index table (pointing to all generated knowledge files with "when to read" guidance)
 - Empty "Hot Context" section
 
@@ -295,9 +315,9 @@ _No entries yet._
 
 Write each generated skill to `.claude/skills/[skill-name]/SKILL.md`.
 
-### 4.5: Task system (if Q4 = full PM)
+### 4.5: Task system (if Q5 = full PM)
 
-Create all of these, replacing `PREFIX` with the chosen prefix from Q5 and `TASKS_DIR` with the chosen path from Q5b (default `.tasks`):
+Create all of these, replacing `PREFIX` with the chosen prefix from Q6 and `TASKS_DIR` with the chosen path from Q6b (default `.tasks`):
 
 - `TASKS_DIR/.ticket_counter` — Contains "1"
 - `TASKS_DIR/BACKLOG.md` — Empty scaffold with section headers
@@ -317,7 +337,7 @@ Create all of these, replacing `PREFIX` with the chosen prefix from Q5 and `TASK
 - `.claude/commands/next.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/backlog.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
 - `.claude/commands/standup.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/pm-sync.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR (only if Q10 != solo)
+- `.claude/commands/pm-sync.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR (only if Q11 != solo)
 
 **BACKLOG.md scaffold:**
 ```markdown
@@ -341,28 +361,87 @@ _No tickets yet._
 _Ideas and future considerations._
 ```
 
-### 4.6: .gitignore rules
+### 4.7: .gitignore rules
 
-Based on Q6 and Q7, append to the project's `.gitignore`:
+Based on Q7 and Q8, append to the project's `.gitignore`:
 
 ```
-# Claude Code context
+# AI coding tool context
 .claude/plans/
 ```
 
-Add these conditionally based on Q6 selections:
+If Codex selected, also add: `.codex/` (user config, not project context)
+If Gemini selected, also add: `.gemini/settings.json` (user config, not project context)
+If Cursor selected, also add: `.cursor/` to gitignore EXCEPT `.cursor/rules/` (rules are shared)
+
+Add these conditionally based on Q7 selections:
 - If commands unselected: `.claude/commands/`
 - If skills unselected: `.claude/skills/`
 - If knowledge unselected: `.claude/knowledge/`
 - If memory unselected: `.claude/memory/`
 
-Based on Q7 (use the actual TASKS_DIR path from Q5b):
+Based on Q8 (use the actual TASKS_DIR path from Q6b):
 - If tasks gitignored: add TASKS_DIR to `.gitignore`
 - If tasks in separate repo: add TASKS_DIR to `.gitignore` and init a separate git repo inside it
 
 If the `.gitignore` file doesn't exist, create it. If it does, append (don't overwrite).
 
-### 4.7: dotcortex config file
+### 4.8: Multi-tool support (based on Q2)
+
+Generate additional files for each tool selected in Q2. `.claude/` is always the canonical source — other tools get symlinks or generated equivalents.
+
+**If Codex CLI selected:**
+
+1. Generate `AGENTS.md` at project root with the same content as `CLAUDE.md`
+2. Symlink skills into Codex's expected location:
+```bash
+mkdir -p .agents/skills
+# For each skill directory in .claude/skills/:
+ln -s ../../.claude/skills/<skill-name> .agents/skills/<skill-name>
+```
+3. Add `.agents/` to the dotcortex config's `tools` array
+
+**If Gemini CLI selected:**
+
+1. Generate `GEMINI.md` at project root with the same content as `CLAUDE.md`
+2. Symlink skills into Gemini's expected location:
+```bash
+mkdir -p .gemini/skills
+# For each skill directory in .claude/skills/:
+ln -s ../../.claude/skills/<skill-name> .gemini/skills/<skill-name>
+```
+3. Add `.gemini/` to the dotcortex config's `tools` array
+
+**If Cursor selected:**
+
+1. If `AGENTS.md` wasn't already created (Codex not selected), generate it with same content as `CLAUDE.md` — Cursor reads AGENTS.md natively
+2. Generate `.cursor/rules/` directory with one `.mdc` file per skill:
+```
+.cursor/rules/
+├── pm-agent.mdc
+├── backlog-cleanup.mdc
+├── feature-planning.mdc
+├── thinking-modes.mdc
+└── [domain-skill].mdc
+```
+3. Each `.mdc` file maps from the SKILL.md:
+```yaml
+---
+description: [skill description from YAML frontmatter]
+globs: []
+alwaysApply: false
+---
+[skill SKILL.md body content]
+```
+   - PM-related skills (`pm-agent`, `backlog-cleanup`, `feature-planning`): set `alwaysApply: false` (agent-requested based on description)
+   - Domain skills (e.g., `rails-backend`): set glob patterns based on relevant file extensions (e.g., `**/*.rb` for Rails, `**/*.tsx` for React)
+   - `thinking-modes`: set `alwaysApply: true` (always relevant)
+
+**Symlink maintenance note:** Add a comment to the Phase 5 summary explaining that if users add new skills later, they should run `/cortex-update` to regenerate symlinks for other tools, or manually create them.
+
+**Important:** Knowledge files (`.claude/knowledge/`) are NOT symlinked to other tool directories. They are referenced via `@import` syntax in AGENTS.md/GEMINI.md where supported, or inlined into Cursor `.mdc` rules where relevant.
+
+### 4.9: dotcortex config file
 
 Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`.
 
@@ -373,11 +452,12 @@ Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`
   "installed_at": "YYYY-MM-DD",
   "updated_at": "YYYY-MM-DD",
   "config": {
-    "prefix": "[chosen prefix from Q5]",
+    "prefix": "[chosen prefix from Q6]",
     "tasks_dir": ".tasks",
     "task_storage": "same_repo | gitignored | separate_repo",
     "team_sync": "solo | manual | auto_mutation | session_bookends",
     "git_autonomy": "manual | commit | commit_push | commit_push_pr",
+    "tools": ["claude", "codex", "gemini", "cursor"],
     "git_tracking": {
       "commands": true,
       "skills": true,
@@ -428,6 +508,13 @@ Print a summary of everything created:
 
 ### Task management: [enabled with PREFIX-XXX / lightweight / disabled]
 
+### Tools configured:
+- [list each selected tool and what was generated]
+- e.g., "Claude Code — .claude/, CLAUDE.md"
+- e.g., "Codex CLI — .agents/skills/ (symlinked), AGENTS.md"
+- e.g., "Gemini CLI — .gemini/skills/ (symlinked), GEMINI.md"
+- e.g., "Cursor — .cursor/rules/*.mdc, AGENTS.md"
+
 ### Git tracking:
 - Tasks: [tracked / gitignored / separate repo]
 - Skills & knowledge: [tracked / gitignored]
@@ -438,6 +525,7 @@ Print a summary of everything created:
 2. Review generated skills in .claude/skills/ — refine for your project
 3. As you work, knowledge files will fill up naturally
 [if PM enabled]: 4. Run `/pm new <description>` to create your first ticket
+[if multi-tool]: 5. Skills are symlinked — adding new skills requires `/cortex-update` to sync to other tools
 ```
 
 ## Non-Destructive Mode

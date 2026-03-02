@@ -17,21 +17,29 @@ Break down ticket $ARGUMENTS into implementation steps.
    - Can it be broken into logical steps?
    - What are the dependencies?
 
-3. **Create subtasks:**
-   - Create folder: `TASKS_DIR/$ARGUMENTS/`
+3. **Create subtasks using letter subnumbering:**
+   - Create folder: `TASKS_DIR/$ARGUMENTS/` (if not already inside a parent directory)
+   - Move the parent ticket into the folder if needed
    - Identify 3-7 steps
-   - Create child ticket for each
-   - Update parent with subtask list
+   - Name subtasks as `$ARGUMENTS`a, `$ARGUMENTS`b, `$ARGUMENTS`c, etc. (e.g., PREFIX-112a, PREFIX-112b, PREFIX-112c)
+   - Create child ticket for each: `TASKS_DIR/$ARGUMENTS/$ARGUMENTSa-description.md`
+   - **Do NOT increment the ticket counter** — letter subtasks don't consume numbers
 
 4. **Update parent ticket:**
-   Add subtasks section:
+   - Change Type to PARENT
+   - Add subtasks section:
 ```markdown
    ### Subtasks
-   - [ ] PREFIX-XXX: Step 1
-   - [ ] PREFIX-YYY: Step 2
+   - [ ] $ARGUMENTSa: Step 1
+   - [ ] $ARGUMENTSb: Step 2
+   - [ ] $ARGUMENTSc: Step 3
 ```
 
-5. **Update counter:**
-   Increment by number of subtasks created
+5. **Report:** List subtasks created with dependency order
+
+**Naming rules:**
+- Letters are lowercase: a, b, c, ... z
+- If you somehow need >26 subtasks, the ticket is too big — split into multiple parents instead
+- Subtask files: `$ARGUMENTSa-short-description.md` (letter attached directly, no dash before letter)
 
 Arguments: $ARGUMENTS

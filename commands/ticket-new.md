@@ -93,9 +93,11 @@ Ask: "Should I break this into subtasks?"
 
 **If yes:**
 - Create folder `TASKS_DIR/PREFIX-XXX/`
+- Move parent ticket into the folder
 - Identify 3-5 implementation steps
-- Create child ticket for each step using child template
-- Each child gets next ticket number
+- Name subtasks with letter suffixes: PREFIX-XXXa, PREFIX-XXXb, PREFIX-XXXc, etc.
+- Create child ticket for each: `TASKS_DIR/PREFIX-XXX/PREFIX-XXXa-description.md`
+- **Do NOT increment the ticket counter for subtasks** — letter subtasks don't consume numbers
 - Link children in parent ticket
 
 **Each subtask should:**
@@ -116,16 +118,16 @@ Ask: "Should I break this into subtasks?"
 ## Step 6: Update counter
 
 ```bash
-# Increment by (1 + number of subtasks created)
-echo $(($(cat TASKS_DIR/.ticket_counter) + 4)) > TASKS_DIR/.ticket_counter
+# Increment by 1 for the parent ticket only (subtasks use letter suffixes, not new numbers)
+echo $(($(cat TASKS_DIR/.ticket_counter) + 1)) > TASKS_DIR/.ticket_counter
 ```
 
 **Update parent ticket with subtask list:**
 ```markdown
 ### Subtasks
-- [ ] PREFIX-YYY: First step description
-- [ ] PREFIX-ZZZ: Second step description
-- [ ] PREFIX-AAA: Third step description
+- [ ] PREFIX-XXXa: First step description
+- [ ] PREFIX-XXXb: Second step description
+- [ ] PREFIX-XXXc: Third step description
 ```
 
 ## Summary Report
@@ -136,10 +138,10 @@ Created PREFIX-XXX: [Feature Name]
 
 **Feature:** [Brief description]
 **Subtasks:** X created
-- PREFIX-YYY: [Description]
-- PREFIX-ZZZ: [Description]
+- PREFIX-XXXa: [Description]
+- PREFIX-XXXb: [Description]
 
-**Next step:** Start with PREFIX-YYY (recommend this one because...)
+**Next step:** Start with PREFIX-XXXa (recommend this one because...)
 ```
 
 ---
