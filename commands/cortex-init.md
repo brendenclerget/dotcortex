@@ -7,6 +7,50 @@ description: Bootstrap Claude Code context management for any project. Scans cod
 
 You are initializing Claude Code's context management system for this project. Follow these phases exactly.
 
+## Phase 0: Resume Check
+
+**Before doing anything else, check for a previous incomplete init.**
+
+Look for `.dotcortex/.init-state.json` in the project root. If it exists, this is a resumed session.
+
+```json
+{
+  "phase": "interview",
+  "scan_results": { ... },
+  "answers": {
+    "Q1": "A trading card inventory management app",
+    "Q2": ["claude", "codex"],
+    "Q3": ["ruby", "rails", "react-native", "expo"],
+    "Q4": ["no-servers", "no-docs"]
+  },
+  "last_completed_question": "Q4",
+  "generated_files": []
+}
+```
+
+**If state file exists:**
+1. Read it and ask:
+   ```
+   Found an incomplete dotcortex init (completed through Q4).
+
+     1. Resume where you left off (Recommended)
+     2. Start over from scratch
+   ```
+2. If resume: skip Phase 1 (use saved `scan_results`), skip answered questions, resume at `last_completed_question + 1`
+3. If start over: delete the state file and proceed from Phase 1 fresh
+
+**If state file does not exist:**
+1. Fresh init — proceed normally from Phase 1
+
+**State file rules:**
+- Create `.dotcortex/.init-state.json` at the START of Phase 2 (after scan completes)
+- Update it after EVERY question is answered (write the answer + increment `last_completed_question`)
+- Update it after each file is generated in Phase 4 (track `generated_files`)
+- Delete it at the END of Phase 5 (successful completion)
+- If init completes successfully, the state file is gone — re-running `/cortex-init` starts fresh
+
+**Partial Phase 4 recovery:** If the state file has `generated_files` populated, some files were already written. Skip those during generation. This handles the case where init crashed mid-file-generation.
+
 ## Phase 1: Codebase Scan
 
 Scan the project automatically (no user input needed yet). Detect:
@@ -50,6 +94,13 @@ Scan the project automatically (no user input needed yet). Detect:
 - Any existing CLAUDE.md
 - Any existing `.claude/` directory
 
+**Existing Task Files:**
+- Check common task locations: `.tasks/`, `tasks/`, `claude_tasks/`, `.claude/tasks/`
+- Look for ticket-like files: `*-[0-9]*.md`, `*.ticket.md`, any markdown with `Status:` and `Priority:` headers
+- Check for `.ticket_counter` files
+- Check for `BACKLOG.md` or `TODO.md`
+- Report what was found — these will be offered for migration in Q6b
+
 **Git Info:**
 - Remote URL (`git remote -v`)
 - Default branch
@@ -76,6 +127,8 @@ Then proceed to Phase 2.
 ## Phase 2: User Interview
 
 Ask these questions using AskUserQuestion. Adapt based on scan results.
+
+**IMPORTANT: Save state after every answer.** Write the answer to `.dotcortex/.init-state.json` immediately after the user responds to each question. This way, if the session is interrupted, we resume from the next unanswered question — not from scratch.
 
 **Q1: Project overview**
 - Question: "What does this project do? (A brief description for CLAUDE.md)"
@@ -133,6 +186,26 @@ At least one must be selected. Claude Code is pre-selected as the default since 
   - ".claude/tasks/" — grouped with other Claude context
   - "tasks/" — fully visible, no dot-prefix
 - Allow free text via Other for custom path
+
+**If existing task files were detected in Phase 1 scan**, add a follow-up:
+
+**Q6c: Migrate existing tasks** (only if Q5 = full PM AND existing tasks detected)
+- Question: "Found existing task files in `[detected location]` ([N] files, counter at [X]). Migrate them into the new task directory?"
+- Header: "Migrate"
+- Options:
+  - "Yes — move files and preserve counter (Recommended)"
+  - "Yes — copy files (keep originals in place)"
+  - "No — start fresh, ignore existing tasks"
+
+**If migrating:**
+1. Read the existing `.ticket_counter` value (if present) — new counter starts at this number or higher
+2. Move/copy all ticket files (`PREFIX-*.md`) into the new TASKS_DIR
+3. Move/copy any `archive/` subdirectory
+4. Move/copy `BACKLOG.md` if it exists
+5. Move/copy templates if they exist
+6. If the old location was a different path (e.g., `claude_tasks/` → `.tasks/`), rename file references inside CLAUDE.md and MEMORY.md to point to the new location
+7. If "move" was selected and old directory is now empty, remove it
+8. Report: "Migrated [N] tickets, counter at [X], [Y] archived"
 
 **Q7: Git tracking** (multi-select, one row per category)
 - Question: "Which parts of your Claude context should be tracked in git? (Unselect to gitignore)"
@@ -488,7 +561,12 @@ Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`
 - Domain skills generated from stack detection
 - TASKS_DIR contents (BACKLOG.md, .ticket_counter, archive/)
 
-## Phase 5: Summary
+## Phase 5: Cleanup & Summary
+
+**Delete the init state file** — init completed successfully:
+```bash
+rm -f .dotcortex/.init-state.json
+```
 
 Print a summary of everything created:
 
