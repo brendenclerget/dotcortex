@@ -318,7 +318,7 @@ Brief 1-2 sentence summary.
 
 ## Available Commands
 
-See `.claude/commands/pm.md` for details:
+See `.dotcortex/commands/pm.md` for details:
 - `/pm new <desc>` - **Always creates a single ticket.** Never auto-split into subtasks. If the description is clearly a multi-day feature, create one ticket and recommend `/ticket-breakdown PREFIX-XXX`.
 - `/pm start PREFIX-XXX` - Begin work
 - `/pm done PREFIX-XXX` - Complete & archive
@@ -359,7 +359,7 @@ See `.claude/commands/pm.md` for details:
 
 ## Team Sync
 
-If team sync is configured (check `.claude/.dotcortex.json` → `config.team_sync`), follow these rules:
+If team sync is configured (check `.dotcortex/config.json` → `config.team_sync`), follow these rules:
 
 **Manual mode (`manual`):**
 - No automatic sync. User runs `/pm sync` when they want to push/pull.
@@ -398,7 +398,7 @@ If team sync is configured (check `.claude/.dotcortex.json` → `config.team_syn
 When marking a ticket DONE (step 2 of completion process), review the work and decide if anything should be retained in the knowledge base.
 
 **Knowledge files live in the project directory:**
-`.claude/knowledge/`
+`.dotcortex/knowledge/`
 
 **When to store (ticket reveals):**
 - A technical gotcha that would bite someone again

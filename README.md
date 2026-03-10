@@ -54,7 +54,7 @@ If you run `install.sh` again in an existing repo, it runs in upgrade mode:
 
 If you need legacy migration during install upgrade:
 ```bash
-~/dotcortex/install.sh --with-migrations --tasks-from claude_tasks --tasks-mode move /path/to/project
+~/dotcortex/install.sh --with-migrations --tasks-from .tasks --tasks-mode move /path/to/project
 ```
 
 Manual task migration (run anytime, independent of installer migration markers):

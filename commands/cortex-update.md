@@ -47,7 +47,7 @@ If legacy layout is detected:
 4. Move managed content from `.claude/` to `.dotcortex/`.
 5. Preserve `.claude/settings.local.json` exactly as-is.
 6. Preserve unmanaged `.claude/` files (for example `.claude/hooks/`, `.claude/plans/`).
-7. Detect current task path from legacy config (`tasks_dir`) and on-disk candidates (`.tasks`, `tasks`, `claude_tasks`, `.claude/tasks`), then ask whether to move, copy, or skip migration into `.dotcortex/tasks`.
+7. Detect current task path from legacy config (`tasks_dir`) and on-disk candidates (`.tasks`, `tasks`, legacy `claude_tasks`, `.claude/tasks`), then ask whether to move, copy, or skip migration into `.dotcortex/tasks`.
 8. Create `.tasks -> .dotcortex/tasks` (or fallback copy view if symlinks unavailable).
 9. Write `.dotcortex/config.json` and mark layout as migrated.
 10. Rebuild tool views from `.dotcortex` (Step 9).

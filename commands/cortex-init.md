@@ -106,7 +106,7 @@ Scan the project automatically (no user input needed yet). Detect:
 - Any existing `.claude/` directory
 
 **Existing Task Files:**
-- Check common task locations: `.tasks/`, `tasks/`, `claude_tasks/`, `.claude/tasks/`
+- Check common task locations: `.tasks/`, `tasks/`, legacy `claude_tasks/`, `.claude/tasks/`
 - Look for ticket-like files: `*-[0-9]*.md`, `*.ticket.md`, any markdown with `Status:` and `Priority:` headers
 - Check for `.ticket_counter` files
 - Check for `BACKLOG.md` or `TODO.md`
@@ -222,7 +222,7 @@ At least one must be selected. Claude Code is pre-selected as the default since 
   - "No — start fresh, ignore existing tasks"
 
 Before applying migration, ask one confirmation question:
-- "Have you backed up `.claude/` and your task directories (`claude_tasks/`, `.tasks/`, or `tasks/`)?"  
+- "Have you backed up `.claude/` and your task directories (legacy `claude_tasks/`, `.tasks/`, or `tasks/`)?"  
 If not, pause and let the user back up first.
 
 If multiple candidate task directories are detected, ask:
@@ -235,7 +235,7 @@ Default to the path from legacy config (`tasks_dir`) when available.
 3. Move/copy any `archive/` subdirectory
 4. Move/copy `BACKLOG.md` if it exists
 5. Move/copy templates if they exist
-6. If the old location was a different path (e.g., `claude_tasks/`), rename references in CLAUDE.md and MEMORY.md to canonical `.dotcortex/tasks/` (or `.tasks/` where user-facing compatibility is preferred)
+6. If the old location was a different path (e.g., legacy `claude_tasks/`), rename references in CLAUDE.md and MEMORY.md to canonical `.dotcortex/tasks/` (or `.tasks/` where user-facing compatibility is preferred)
 7. If "move" was selected and old directory is now empty, remove it
 8. Report: "Migrated [N] tickets, counter at [X], [Y] archived"
 
