@@ -45,7 +45,7 @@ If yes:
 
 ## Step 4: Knowledge extraction
 
-Read the ticket's Technical Notes, Lessons Learned, and work done sections. Decide if anything belongs in `.claude/knowledge/` files.
+Read the ticket's Technical Notes, Lessons Learned, and work done sections. Decide if anything belongs in `.dotcortex/knowledge/` files.
 
 **Store when the ticket reveals:**
 - A technical gotcha that would bite someone again

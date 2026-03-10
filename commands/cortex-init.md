@@ -7,6 +7,16 @@ description: Bootstrap Claude Code context management for any project. Scans cod
 
 You are initializing Claude Code's context management system for this project. Follow these phases exactly.
 
+## v1.5 Canonical Rules
+
+Apply these rules throughout all phases (they override older path conventions):
+
+1. `.dotcortex/` is the canonical location for generated context.
+2. `.claude/` is a tool view populated from `.dotcortex/` (symlink/copy view depending on environment).
+3. `.dotcortex/tasks/` is canonical for tasks.
+4. `.tasks/` is always a compatibility view pointing to `.dotcortex/tasks/`.
+5. Team/org usage is selectable in interview mode, but canonical paths do not change.
+
 ## Phase 0: Resume Check
 
 **Before doing anything else, check for a previous incomplete init.**
@@ -92,6 +102,7 @@ Scan the project automatically (no user input needed yet). Detect:
 - CONTRIBUTING.md
 - docs/ folder
 - Any existing CLAUDE.md
+- Any existing `.dotcortex/` directory
 - Any existing `.claude/` directory
 
 **Existing Task Files:**
@@ -99,7 +110,7 @@ Scan the project automatically (no user input needed yet). Detect:
 - Look for ticket-like files: `*-[0-9]*.md`, `*.ticket.md`, any markdown with `Status:` and `Priority:` headers
 - Check for `.ticket_counter` files
 - Check for `BACKLOG.md` or `TODO.md`
-- Report what was found — these will be offered for migration in Q6b
+- Report what was found — these will be offered for migration into `.dotcortex/tasks/`
 
 **Git Info:**
 - Remote URL (`git remote -v`)
@@ -120,6 +131,7 @@ Scan the project automatically (no user input needed yet). Detect:
 **Git Remote:** [remote URL]
 
 [If .claude/ exists]: ⚠️ Existing .claude/ directory detected. Will augment, not overwrite.
+[If .dotcortex/ exists]: Existing canonical layout detected. Init will repair/extend, not re-bootstrap from scratch.
 ```
 
 Then proceed to Phase 2.
@@ -140,7 +152,7 @@ Ask these questions using AskUserQuestion. Adapt based on scan results.
 - Question: "Which AI coding tools do you use? dotcortex will generate compatible config for each."
 - Header: "Tools"
 - Options:
-  - "Claude Code (Recommended)" — `.claude/` directory, `CLAUDE.md`
+  - "Claude Code (Recommended)" — `.claude/` view + `CLAUDE.md` from canonical `.dotcortex/`
   - "OpenAI Codex CLI" — `.agents/` directory, `AGENTS.md`
   - "Gemini CLI" — `.gemini/` directory, `GEMINI.md`
   - "Cursor" — `.cursor/rules/` directory, reads `AGENTS.md`
@@ -169,6 +181,20 @@ At least one must be selected. Claude Code is pre-selected as the default since 
   - "Lightweight (just a TODO list in CLAUDE.md)"
   - "No task tracking"
 
+**Q5a: Context mode** (single select)
+- Question: "How should this project use dotcortex context?"
+- Header: "Mode"
+- Options:
+  - "Local-only (Recommended for solo/local use)"
+  - "Org-connected (shared org repo + project mapping)"
+
+**Q5b: Symlink compatibility** (single select)
+- Question: "How should tool views be built?"
+- Header: "Views"
+- Options:
+  - "Symlink views (Recommended)"
+  - "Copy views (fallback for symlink-limited environments)"
+
 **Q6: Ticket prefix** (only if Q5 = full PM)
 - Question: "What prefix should tickets use? (e.g., APP, PRJ, or leave blank for repo name)"
 - Header: "Prefix"
@@ -178,32 +204,38 @@ At least one must be selected. Claude Code is pre-selected as the default since 
   - "PRJ"
 - Allow free text via Other
 
-**Q6b: Task directory** (only if Q5 = full PM)
-- Question: "Where should task files live?"
-- Header: "Task dir"
+**Q6b: Canonical task location** (only if Q5 = full PM)
+- Question: "Task storage uses canonical `.dotcortex/tasks/` with `.tasks/` compatibility view. Continue?"
+- Header: "Task path"
 - Options:
-  - ".tasks/ (Recommended)" — top-level, clean default
-  - ".claude/tasks/" — grouped with other Claude context
-  - "tasks/" — fully visible, no dot-prefix
-- Allow free text via Other for custom path
+  - "Yes — use canonical task layout (Recommended)"
+  - "Cancel init"
 
 **If existing task files were detected in Phase 1 scan**, add a follow-up:
 
 **Q6c: Migrate existing tasks** (only if Q5 = full PM AND existing tasks detected)
-- Question: "Found existing task files in `[detected location]` ([N] files, counter at [X]). Migrate them into the new task directory?"
+- Question: "Found existing task files in `[detected location]` ([N] files, counter at [X]). Migrate them into `.dotcortex/tasks/`?"
 - Header: "Migrate"
 - Options:
   - "Yes — move files and preserve counter (Recommended)"
   - "Yes — copy files (keep originals in place)"
   - "No — start fresh, ignore existing tasks"
 
+Before applying migration, ask one confirmation question:
+- "Have you backed up `.claude/` and your task directories (`claude_tasks/`, `.tasks/`, or `tasks/`)?"  
+If not, pause and let the user back up first.
+
+If multiple candidate task directories are detected, ask:
+- "Which path should be treated as the source of truth for migration?"  
+Default to the path from legacy config (`tasks_dir`) when available.
+
 **If migrating:**
 1. Read the existing `.ticket_counter` value (if present) — new counter starts at this number or higher
-2. Move/copy all ticket files (`PREFIX-*.md`) into the new TASKS_DIR
+2. Move/copy all ticket files (`PREFIX-*.md`) into `.dotcortex/tasks/`
 3. Move/copy any `archive/` subdirectory
 4. Move/copy `BACKLOG.md` if it exists
 5. Move/copy templates if they exist
-6. If the old location was a different path (e.g., `claude_tasks/` → `.tasks/`), rename file references inside CLAUDE.md and MEMORY.md to point to the new location
+6. If the old location was a different path (e.g., `claude_tasks/`), rename references in CLAUDE.md and MEMORY.md to canonical `.dotcortex/tasks/` (or `.tasks/` where user-facing compatibility is preferred)
 7. If "move" was selected and old directory is now empty, remove it
 8. Report: "Migrated [N] tickets, counter at [X], [Y] archived"
 
@@ -211,10 +243,10 @@ At least one must be selected. Claude Code is pre-selected as the default since 
 - Question: "Which parts of your Claude context should be tracked in git? (Unselect to gitignore)"
 - Header: "Git tracking"
 - Options (each independently toggleable):
-  - "Commands (.claude/commands/)" — default: tracked
-  - "Skills (.claude/skills/)" — default: tracked
-  - "Knowledge (.claude/knowledge/)" — default: tracked
-  - "Memory (.claude/memory/MEMORY.md)" — default: tracked
+  - "Commands (.dotcortex/commands/)" — default: tracked
+  - "Skills (.dotcortex/skills/)" — default: tracked
+  - "Knowledge (.dotcortex/knowledge/)" — default: tracked
+  - "Memory (.dotcortex/memory/MEMORY.md)" — default: tracked
 - Note: If task management is enabled (Q5), tasks are handled separately in Q8.
 
 **Q8: Task git tracking** (single select, only if Q5 = full PM)
@@ -273,6 +305,22 @@ Based on selection, configure the pm-agent skill's sync behavior:
 - Options:
   - "No special guardrails"
   - Pre-populated common ones based on stack
+
+**Q13: Org repo connection** (only if Q5a = org_connected)
+- Question: "Connect to an org context repo?"
+- Header: "Org repo"
+- Options:
+  - "Select existing repo (discover via gh)"
+  - "Create new org context repo"
+  - "Enter repo URL manually"
+  - "Skip for now (continue as local-only)"
+
+**Q14: Org project mapping** (only if Q13 connects repo)
+- Question: "What project key should this repo map to in org context?"
+- Header: "Org project"
+- Options:
+  - Auto-detected repo name from `git remote -v` (Recommended)
+  - Enter manually
 
 ## Phase 3: Stack Research & Skill Generation
 
@@ -354,15 +402,15 @@ Generate at the project root. Include:
 Destructive git operations (`git checkout -- <file>`, `git reset --hard`, `git restore`, `git clean -f`) can silently discard uncommitted work from other sessions or agents. Always explain what will be lost and get explicit confirmation before running any command that discards local changes.
 ```
 
-### 4.2: .claude/memory/MEMORY.md
+### 4.2: `.dotcortex/memory/MEMORY.md`
 
-Generate in `.claude/memory/`. Include:
+Generate in `.dotcortex/memory/`. Include:
 - Repository layout table (from scan — directories, what they contain)
 - Workflow preferences (from Q4)
 - Knowledge base index table (pointing to all generated knowledge files with "when to read" guidance)
 - Empty "Hot Context" section
 
-### 4.3: .claude/knowledge/ files
+### 4.3: `.dotcortex/knowledge/` files
 
 **Always create:**
 - `architecture-decisions.md` — Header + "No entries yet" placeholder
@@ -386,31 +434,40 @@ _No entries yet._
 
 ### 4.4: Domain skills
 
-Write each generated skill to `.claude/skills/[skill-name]/SKILL.md`.
+Write each generated skill to `.dotcortex/skills/[skill-name]/SKILL.md`.
 
 ### 4.5: Task system (if Q5 = full PM)
 
-Create all of these, replacing `PREFIX` with the chosen prefix from Q6 and `TASKS_DIR` with the chosen path from Q6b (default `.tasks`):
+Task paths are fixed in v1.5:
+- Canonical: `.dotcortex/tasks/`
+- Compatibility view: `.tasks/ -> .dotcortex/tasks/`
 
-- `TASKS_DIR/.ticket_counter` — Contains "1"
-- `TASKS_DIR/BACKLOG.md` — Empty scaffold with section headers
-- `TASKS_DIR/archive/` — Empty directory (create with `.gitkeep`)
-- `TASKS_DIR/templates/simple-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `TASKS_DIR/templates/parent-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `TASKS_DIR/templates/child-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `TASKS_DIR/templates/followup-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `.claude/skills/pm-agent/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/skills/backlog-cleanup/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/skills/feature-planning/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/pm.md` — Copy from dotcortex, replace PREFIX
-- `.claude/commands/ticket-new.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/ticket-breakdown.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/ticket-refine.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/ticket-close.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/next.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/backlog.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/standup.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.claude/commands/pm-sync.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR (only if Q11 != solo)
+Create all of these, replacing `PREFIX` with the chosen prefix from Q6 and `TASKS_DIR` with `.dotcortex/tasks`:
+
+- `.dotcortex/tasks/.ticket_counter` — Contains "1"
+- `.dotcortex/tasks/BACKLOG.md` — Empty scaffold with section headers
+- `.dotcortex/tasks/archive/` — Empty directory (create with `.gitkeep`)
+- `.dotcortex/tasks/templates/simple-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
+- `.dotcortex/tasks/templates/parent-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
+- `.dotcortex/tasks/templates/child-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
+- `.dotcortex/tasks/templates/followup-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
+- `.dotcortex/skills/pm-agent/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/skills/backlog-cleanup/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/skills/feature-planning/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/pm.md` — Copy from dotcortex, replace PREFIX
+- `.dotcortex/commands/ticket-new.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/ticket-breakdown.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/ticket-refine.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/ticket-close.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/next.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/backlog.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/standup.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
+- `.dotcortex/commands/pm-sync.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR (only if Q11 != solo)
+- `.dotcortex/commands/cortex.md` — Copy from dotcortex
+- `.dotcortex/commands/cortex-sync.md` — Copy from dotcortex
+- `.dotcortex/commands/org.md` — Copy from dotcortex (if Q5a = org_connected)
+- `.dotcortex/commands/cortex-push.md` — Copy from dotcortex (if Q5a = org_connected)
+- `.tasks` symlink to `.dotcortex/tasks/` (or copy fallback if symlinks are disabled)
 
 **BACKLOG.md scaffold:**
 ```markdown
@@ -434,6 +491,19 @@ _No tickets yet._
 _Ideas and future considerations._
 ```
 
+### 4.6: Rebuild Tool Views From Canonical Structure
+
+After writing canonical files, rebuild tool views:
+
+1. `.claude/commands`, `.claude/skills`, `.claude/knowledge`, `.claude/memory` from:
+   - `.dotcortex/org/*` (org-global, if connected)
+   - `.dotcortex/org/projects/<project_key>/*` (org project overlay, if connected)
+   - `.dotcortex/*` (local canonical)
+2. Preserve `.claude/settings.local.json` (real file, never symlink over it)
+3. Use collision order for shared files: org-global first, org-project second, local third (local wins)
+4. Ensure `.tasks -> .dotcortex/tasks/`
+5. If symlink mode is disabled (`Q5b = copy views`), copy instead of symlink and warn that views can drift
+
 ### 4.7: .gitignore rules
 
 Based on Q7 and Q8, append to the project's `.gitignore`:
@@ -448,20 +518,20 @@ If Gemini selected, also add: `.gemini/settings.json` (user config, not project 
 If Cursor selected, also add: `.cursor/` to gitignore EXCEPT `.cursor/rules/` (rules are shared)
 
 Add these conditionally based on Q7 selections:
-- If commands unselected: `.claude/commands/`
-- If skills unselected: `.claude/skills/`
-- If knowledge unselected: `.claude/knowledge/`
-- If memory unselected: `.claude/memory/`
+- If commands unselected: `.dotcortex/commands/`
+- If skills unselected: `.dotcortex/skills/`
+- If knowledge unselected: `.dotcortex/knowledge/`
+- If memory unselected: `.dotcortex/memory/`
 
-Based on Q8 (use the actual TASKS_DIR path from Q6b):
-- If tasks gitignored: add TASKS_DIR to `.gitignore`
-- If tasks in separate repo: add TASKS_DIR to `.gitignore` and init a separate git repo inside it
+Based on Q8:
+- If tasks gitignored: add `.dotcortex/tasks/` and `.tasks` to `.gitignore`
+- If tasks in separate repo: add `.dotcortex/tasks/` and `.tasks` to `.gitignore` and initialize a separate git repo in `.dotcortex/tasks/`
 
 If the `.gitignore` file doesn't exist, create it. If it does, append (don't overwrite).
 
 ### 4.8: Multi-tool support (based on Q2)
 
-Generate additional files for each tool selected in Q2. `.claude/` is always the canonical source — other tools get symlinks or generated equivalents.
+Generate additional files for each tool selected in Q2. `.dotcortex/` is canonical — tool directories are views.
 
 **If Codex CLI selected:**
 
@@ -469,8 +539,8 @@ Generate additional files for each tool selected in Q2. `.claude/` is always the
 2. Symlink skills into Codex's expected location:
 ```bash
 mkdir -p .agents/skills
-# For each skill directory in .claude/skills/:
-ln -s ../../.claude/skills/<skill-name> .agents/skills/<skill-name>
+# For each skill directory in .dotcortex/skills/:
+ln -s ../../.dotcortex/skills/<skill-name> .agents/skills/<skill-name>
 ```
 3. Add `.agents/` to the dotcortex config's `tools` array
 
@@ -480,8 +550,8 @@ ln -s ../../.claude/skills/<skill-name> .agents/skills/<skill-name>
 2. Symlink skills into Gemini's expected location:
 ```bash
 mkdir -p .gemini/skills
-# For each skill directory in .claude/skills/:
-ln -s ../../.claude/skills/<skill-name> .gemini/skills/<skill-name>
+# For each skill directory in .dotcortex/skills/:
+ln -s ../../.dotcortex/skills/<skill-name> .gemini/skills/<skill-name>
 ```
 3. Add `.gemini/` to the dotcortex config's `tools` array
 
@@ -512,24 +582,30 @@ alwaysApply: false
 
 **Symlink maintenance note:** Add a comment to the Phase 5 summary explaining that if users add new skills later, they should run `/cortex-update` to regenerate symlinks for other tools, or manually create them.
 
-**Important:** Knowledge files (`.claude/knowledge/`) are NOT symlinked to other tool directories. They are referenced via `@import` syntax in AGENTS.md/GEMINI.md where supported, or inlined into Cursor `.mdc` rules where relevant.
+**Important:** Knowledge files (`.dotcortex/knowledge/`) are NOT symlinked to other tool directories. They are referenced via `@import` syntax in AGENTS.md/GEMINI.md where supported, or inlined into Cursor `.mdc` rules where relevant.
 
 ### 4.9: dotcortex config file
 
-Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`.
+Generate `.dotcortex/config.json` to enable future updates via `/cortex-update`.
 
 ```json
 {
-  "version": "1.0.0",
+  "schema_version": 1,
+  "version": "2.0.0",
+  "dotcortex_version": "2.0.0",
   "source": "https://github.com/brendenclerget/dotcortex",
-  "installed_at": "YYYY-MM-DD",
-  "updated_at": "YYYY-MM-DD",
+  "installed_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
+  "layout": "dotcortex",
   "config": {
     "prefix": "[chosen prefix from Q6]",
-    "tasks_dir": ".tasks",
+    "tasks_dir": ".dotcortex/tasks",
+    "structure_mode": "single_project | org_connected",
+    "symlinks": true,
     "task_storage": "same_repo | gitignored | separate_repo",
     "team_sync": "solo | manual | auto_mutation | session_bookends",
     "git_autonomy": "manual | commit | commit_push | commit_push_pr",
+    "org": null,
     "tools": ["claude", "codex", "gemini", "cursor"],
     "git_tracking": {
       "commands": true,
@@ -547,6 +623,26 @@ Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`
 }
 ```
 
+If Q13 connected an org repo, set:
+
+```json
+"org": {
+  "repo": "acme-corp/acme-cortex",
+  "project_key": "payments-api",
+  "push_enabled": true
+}
+```
+
+If Q13 selected "create new org context repo", scaffold:
+- `RULES.md`
+- `knowledge/`
+- `skills/`
+- `commands/`
+- `projects/<project_key>/knowledge/`
+- `projects/<project_key>/skills/`
+- `projects/<project_key>/commands/`
+- `projects/<project_key>/tasks/`
+
 **Computing checksums:** After writing each managed file (with PREFIX/TASKS_DIR replaced), compute its SHA-256 hash and store it. This is how `/cortex-update` detects user modifications later.
 
 **What counts as managed:**
@@ -556,10 +652,10 @@ Generate `.claude/.dotcortex.json` to enable future updates via `/cortex-update`
 
 **What is NOT managed (project-specific, never auto-updated):**
 - CLAUDE.md
-- .claude/memory/MEMORY.md
-- .claude/knowledge/* files
+- .dotcortex/memory/MEMORY.md
+- .dotcortex/knowledge/* files
 - Domain skills generated from stack detection
-- TASKS_DIR contents (BACKLOG.md, .ticket_counter, archive/)
+- `.dotcortex/tasks/` contents (BACKLOG.md, .ticket_counter, archive/)
 
 ## Phase 5: Cleanup & Summary
 
@@ -575,9 +671,10 @@ Print a summary of everything created:
 
 ### Files created:
 - CLAUDE.md (project root)
-- .claude/memory/MEMORY.md
-- .claude/knowledge/architecture-decisions.md
-- .claude/knowledge/patterns-and-gotchas.md
+- .dotcortex/memory/MEMORY.md
+- .dotcortex/knowledge/architecture-decisions.md
+- .dotcortex/knowledge/patterns-and-gotchas.md
+- .claude/ (rebuilt view from canonical .dotcortex/)
 - [list all other generated files]
 
 ### Skills generated:
@@ -588,7 +685,7 @@ Print a summary of everything created:
 
 ### Tools configured:
 - [list each selected tool and what was generated]
-- e.g., "Claude Code — .claude/, CLAUDE.md"
+- e.g., "Claude Code — .claude/ view from .dotcortex, CLAUDE.md"
 - e.g., "Codex CLI — .agents/skills/ (symlinked), AGENTS.md"
 - e.g., "Gemini CLI — .gemini/skills/ (symlinked), GEMINI.md"
 - e.g., "Cursor — .cursor/rules/*.mdc, AGENTS.md"
@@ -600,7 +697,7 @@ Print a summary of everything created:
 
 ### Next steps:
 1. Read through CLAUDE.md and adjust anything that doesn't look right
-2. Review generated skills in .claude/skills/ — refine for your project
+2. Review generated skills in .dotcortex/skills/ — refine for your project
 3. As you work, knowledge files will fill up naturally
 [if PM enabled]: 4. Run `/pm new <description>` to create your first ticket
 [if multi-tool]: 5. Skills are symlinked — adding new skills requires `/cortex-update` to sync to other tools
@@ -608,9 +705,9 @@ Print a summary of everything created:
 
 ## Non-Destructive Mode
 
-If `.claude/` already exists when this command runs:
+If `.dotcortex/` or `.claude/` already exists when this command runs:
 
-1. **Warn the user:** "Existing .claude/ directory detected with: [list existing files]"
+1. **Warn the user:** "Existing context directory detected with: [list existing files]"
 2. **Ask:** "How should I handle existing files?"
    - "Augment — add new files, skip existing ones"
    - "Replace — overwrite everything with fresh scaffold"

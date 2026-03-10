@@ -9,7 +9,7 @@ Commit changes across project repositories. Optionally target a single repo.
 
 ## Repository Map
 
-Define your repos in CLAUDE.md or `.claude/.dotcortex.json`. Example:
+Define your repos in CLAUDE.md or `.dotcortex/config.json`. Example:
 
 | Alias | Path | Remote |
 |-------|------|--------|

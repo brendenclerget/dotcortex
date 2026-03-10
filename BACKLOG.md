@@ -1,6 +1,6 @@
 # dotcortex Backlog
 
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-03-08
 
 ---
 
@@ -9,6 +9,7 @@
 - [x] **Pick a name** — `.cortex` / `dotcortex`. Done.
 - [ ] **Create GitHub repo** — `brendenclerget/dotcortex`, push initial commit, verify install.sh works from fresh clone.
 - [ ] **Push card-tracker-rn main** — `.claude/` port is committed locally but not pushed upstream yet.
+- [ ] **v1.5: Canonical structure & org repo** — See ROADMAP.md v1.5 for full breakdown (6 phases). Next major feature work.
 
 ## v1.1 — Polish & DX
 

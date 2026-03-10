@@ -5,11 +5,17 @@
 Claude Code reads specific files to build context about your project:
 
 1. **`CLAUDE.md`** (project root) — Always loaded. Contains project rules, workflow constraints, and quick-start commands.
-2. **`.claude/memory/MEMORY.md`** — Always loaded (first 200 lines). Persistent index of knowledge files, workflow preferences, and cross-cutting patterns.
-3. **`.claude/skills/`** — Auto-invoked based on keyword triggers. Framework-specific conventions and best practices.
-4. **`.claude/knowledge/`** — Read on demand. Detailed reference for specific domains (API patterns, gotchas, architecture decisions).
-5. **`.claude/commands/`** — User-invocable slash commands (`/command-name`).
-6. **`.tasks/`** (or configured path) — Optional ticket-based task management.
+2. **`.dotcortex/memory/MEMORY.md`** — Always loaded (first 200 lines). Persistent index of knowledge files, workflow preferences, and cross-cutting patterns.
+3. **`.dotcortex/skills/`** — Auto-invoked based on keyword triggers. Framework-specific conventions and best practices.
+4. **`.dotcortex/knowledge/`** — Read on demand. Detailed reference for specific domains (API patterns, gotchas, architecture decisions).
+5. **`.dotcortex/commands/`** — Canonical slash command definitions.
+6. **`.claude/`** — Claude Code view generated from `.dotcortex/` (symlink/copy view).
+7. **`.dotcortex/tasks/`** — Canonical ticket-based task management (`.tasks/` is compatibility view).
+
+When org mode is enabled:
+- **Org-global layer:** `.dotcortex/org/{commands,skills,knowledge,RULES.md}`
+- **Org-project layer:** `.dotcortex/org/projects/<project_key>/{commands,skills,knowledge,tasks}`
+- **View precedence:** org-global -> org-project -> local `.dotcortex/*` (local wins)
 
 ## File Roles
 
@@ -59,7 +65,7 @@ A lightweight, file-based ticket system. Each ticket is a markdown file with sta
 `/cortex-init` runs through 5 phases:
 
 1. **Scan** — Detects languages, frameworks, project structure, existing docs
-2. **Interview** — Asks about project purpose, workflow rules, task management preferences
+2. **Interview** — Asks about project purpose, workflow rules, task management preferences, and single-project vs org-connected mode
 3. **Research** — Generates framework-appropriate skills based on detected stack
 4. **Generate** — Creates all files based on scan + interview results
 5. **Summary** — Reports what was created and suggests next steps
@@ -70,7 +76,7 @@ Each category of files can be independently tracked or ignored:
 
 | Category | Tracked | Use Case |
 |----------|---------|----------|
-| Tasks | Yes | Team shares ticket state |
+| Tasks | Yes | Team shares ticket state via `.dotcortex/tasks/` |
 | Tasks | No | Personal workflow only |
 | Tasks | Separate repo | Independent of feature branches |
 | Skills/Knowledge | Yes | All contributors get same context |

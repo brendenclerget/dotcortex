@@ -6,6 +6,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ## [Unreleased]
 
+### Added
+- Installer migration framework (`migrations/`) with per-migration applied state in `.dotcortex/.migrations/`
+- Legacy migration `001_legacy_layout_to_dotcortex_tasks.sh` for `.claude` + legacy task-path installs
+- Legacy migration `002_legacy_project_context_to_dotcortex.sh` to move `.claude/knowledge` + `.claude/memory` into `.dotcortex/*`
+- Installer version metadata files: `.dotcortex/version` and `.dotcortex/install-info.json` (`schema_version`, install/update timestamps, previous version)
+- `scripts/migrate-tasks.sh` for manual task migration into `.dotcortex/tasks` with selectable source and mode
+
+### Changed
+- `install.sh` now supports install/upgrade mode detection and optional non-interactive `--yes`
+- `install.sh` now bootstraps canonical commands into `.dotcortex/commands` (flattened layout, no `.dotcortex/project/` wrapper)
+- `install.sh` now skips legacy migrations by default; use `--with-migrations` to opt in
+- `install.sh` now supports `--tasks-from` and `--tasks-mode` for deterministic legacy task migration
+- Installer now prompts for backup before legacy migration and can create automatic backup archives in `.dotcortex/backups/`
+- `cortex-init`, `cortex-update`, roadmap, and design docs now use flattened local canonical paths (`.dotcortex/{commands,skills,knowledge,memory,tasks}`)
+- Org contract clarified as `org-global` plus `org-project` overlays at `.dotcortex/org/projects/<project_key>/...`
+
 ## [1.3.0] - 2026-03-02
 
 ### Added

@@ -92,6 +92,8 @@ TASKS_DIR/
 
 **Parent tickets live inside their subtask folder** so all data for a feature is localized in one place. Only simple tickets (no subtasks) live at the root level.
 
+**CRITICAL: When creating subtasks, ALWAYS create the parent folder first.** Never leave subtasks as loose files at the root. If you're creating `PREFIX-XXXa`, check if `TASKS_DIR/PREFIX-XXX/` exists. If it doesn't, create it and move the parent ticket into it before creating the subtask. This prevents drift where subtasks accumulate as loose files and lose their relationship to the parent.
+
 ## Ticket Path Resolution
 
 **Before reading or editing any ticket, resolve its canonical path first.** Tickets can move (simple → parent folder, reorganization, etc.) and stale paths cause confusion.

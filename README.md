@@ -25,7 +25,7 @@
 
 ---
 
-`.cortex` scans your project, interviews you about your workflow, and scaffolds the full `.claude/` context structure — **skills, knowledge, memory, and task management** — tailored to your detected stack.
+`.cortex` scans your project, interviews you about your workflow, and scaffolds the full `.dotcortex/` canonical context structure (with `.claude/` as a generated tool view) — **skills, knowledge, memory, and task management** — tailored to your detected stack.
 
 One command. Persistent context. Every session starts smarter.
 
@@ -37,12 +37,30 @@ git clone https://github.com/brendenclerget/dotcortex.git ~/dotcortex
 
 # 2. Install into your project
 ~/dotcortex/install.sh /path/to/your/project
+#    or interactive prompt (no path typing):
+~/dotcortex/install.sh
+#    or non-interactive defaults:
+~/dotcortex/install.sh --yes /path/to/your/project
 
 # 3. Open Claude Code in your project and run:
 /cortex-init
 ```
 
 The init command walks you through a short interview, scans your codebase, and generates everything.
+
+If you run `install.sh` again in an existing repo, it runs in upgrade mode:
+- records installer version metadata in `.dotcortex/version` and `.dotcortex/install-info.json`
+- preserves existing context by default (migrations are opt-in)
+
+If you need legacy migration during install upgrade:
+```bash
+~/dotcortex/install.sh --with-migrations --tasks-from claude_tasks --tasks-mode move /path/to/project
+```
+
+Manual task migration (run anytime, independent of installer migration markers):
+```bash
+~/dotcortex/scripts/migrate-tasks.sh --from /path/to/old/tasks --mode move /path/to/project
+```
 
 ## How It Works
 
@@ -73,9 +91,9 @@ The init command walks you through a short interview, scans your codebase, and g
 | File | Purpose |
 |:-----|:--------|
 | `CLAUDE.md` | Project overview, workflow rules, quick start commands |
-| `.claude/memory/MEMORY.md` | Repo layout, workflow prefs, knowledge index |
-| `.claude/knowledge/architecture-decisions.md` | ADRs — starts empty, fills up as you work |
-| `.claude/knowledge/patterns-and-gotchas.md` | Technical footguns and fixes |
+| `.dotcortex/memory/MEMORY.md` | Repo layout, workflow prefs, knowledge index |
+| `.dotcortex/knowledge/architecture-decisions.md` | ADRs — starts empty, fills up as you work |
+| `.dotcortex/knowledge/patterns-and-gotchas.md` | Technical footguns and fixes |
 
 ### Stack-Detected Skills
 
@@ -99,7 +117,7 @@ Skills auto-invoke based on context keywords. Mention "backend" or "migration" a
 A lightweight, file-based ticket system that lives in your repo. No external tools, no context switching.
 
 ```
-.tasks/
+.dotcortex/tasks/
 ├── .ticket_counter
 ├── BACKLOG.md
 ├── APP-001-auth-flow/
@@ -108,6 +126,8 @@ A lightweight, file-based ticket system that lives in your repo. No external too
 │   └── APP-003-session-management.md # subtask
 ├── APP-004-fix-cors.md               # standalone ticket
 └── archive/2026-02/                  # completed work
+
+.tasks -> .dotcortex/tasks/           # compatibility symlink
 ```
 
 ### PM Commands
@@ -123,6 +143,12 @@ A lightweight, file-based ticket system that lives in your repo. No external too
 | `/next` | Get a recommendation on what to work on |
 | `/backlog` | Show prioritized backlog |
 | `/standup` | Progress summary from git + ticket state |
+| `/cortex-sync` | Rebuild tool views from `.dotcortex/` and sync org layer if connected |
+| `/org add <repo>` | Connect project to org context repo |
+| `/org sync` | Pull latest org context and rebuild views |
+| `/org remove` | Disconnect org repo and rebuild local-only views |
+| `/cortex push knowledge <file>` | Promote local knowledge to org project scope via branch + PR |
+| `/cortex push skill <name>` | Promote local skill to org project scope via branch + PR |
 
 ### Follow-Up Tasks
 
@@ -134,16 +160,28 @@ Knowledge files start empty and grow organically:
 
 - **On ticket completion** — the PM skill extracts lasting learnings (gotchas, decisions, patterns)
 - **Manual entries** — add patterns directly anytime
-- **Cross-session** — everything persists in `.claude/` so the next session picks up where you left off
+- **Cross-session** — everything persists in `.dotcortex/` so the next session picks up where you left off
 
 ```
-.claude/knowledge/
+.dotcortex/knowledge/
 ├── architecture-decisions.md   # ADRs with context + consequences
 ├── patterns-and-gotchas.md     # Technical surprises with fixes
 ├── api-patterns.md             # API conventions, error formats
 ├── frontend-patterns.md        # Component patterns, state mgmt
 └── data-model.md               # Schema conventions, query patterns
 ```
+
+## Org Hierarchy
+
+When org mode is enabled, context is layered in two scopes:
+
+- Org-global: `.dotcortex/org/{commands,skills,knowledge,RULES.md}` (applies everywhere)
+- Org-project: `.dotcortex/org/projects/<project_key>/{commands,skills,knowledge,tasks}` (per-project overlay)
+
+Tool views are rebuilt with precedence:
+1. Org-global
+2. Org-project
+3. Local canonical `.dotcortex/*` (local wins)
 
 ## Git Tracking
 
@@ -179,7 +217,7 @@ Pulls the latest dotcortex, auto-updates files you haven't modified, and walks y
 
 ## Non-Destructive
 
-If `.claude/` already exists, `/cortex-init` detects it and offers to **augment** rather than overwrite. Existing files are preserved unless you explicitly choose to replace them.
+If existing context already exists (`.dotcortex/` or legacy `.claude/`), `/cortex-init` detects it and offers to **augment** rather than overwrite. Existing files are preserved unless you explicitly choose to replace them.
 
 ## Project Structure
 
@@ -189,6 +227,10 @@ dotcortex/
 ├── commands/
 │   ├── cortex-init.md            # Bootstrap command
 │   ├── cortex-update.md          # Update command
+│   ├── cortex.md                 # Top-level namespace command
+│   ├── cortex-sync.md            # Rebuild/sync command
+│   ├── org.md                    # Org lifecycle commands
+│   ├── cortex-push.md            # Project -> org promotion commands
 │   ├── pm.md                     # Core PM commands
 │   ├── ticket-new.md             # Feature planning
 │   ├── ticket-breakdown.md       # Subtask creation
