@@ -140,6 +140,9 @@ A lightweight, file-based ticket system that lives in your repo. No external too
 | `/ticket-new` | Create parent ticket with subtask breakdown |
 | `/ticket-breakdown <id>` | Break existing ticket into subtasks |
 | `/ticket-refine <id>` | Update ticket state from git history |
+| `/ticket-status <id> <status> [owner]` | Set status + assignee, sync backlog, commit |
+| `/ticket-implement <id>` | Validate readiness, mark IN_PROGRESS, then implement |
+| `/ticket-audit <id>` | Generate a paste-ready audit prompt for an external reviewer |
 | `/next` | Get a recommendation on what to work on |
 | `/backlog` | Show prioritized backlog |
 | `/standup` | Progress summary from git + ticket state |
@@ -235,6 +238,9 @@ dotcortex/
 │   ├── ticket-new.md             # Feature planning
 │   ├── ticket-breakdown.md       # Subtask creation
 │   ├── ticket-refine.md          # Git-aware refinement
+│   ├── ticket-status.md          # Status + assignee transitions
+│   ├── ticket-implement.md       # Pick up + implement workflow
+│   ├── ticket-audit.md           # Generate external-reviewer prompt
 │   ├── next.md                   # Work recommendations
 │   ├── backlog.md                # Backlog view
 │   ├── standup.md                # Progress recap

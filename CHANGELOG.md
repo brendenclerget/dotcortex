@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 ## [Unreleased]
 
 ### Added
+- `/ticket-status <id> <status> [owner]` command — explicit status + assignee transitions with backlog sync and commit
+- `/ticket-implement <id>` command — pre-flight readiness check, mark IN_PROGRESS, then carry out the work described in the ticket
+- `/ticket-audit <id>` command — generate a paste-ready audit prompt (with embedded spec, files, reference patterns, and project rules) for an external reviewer
 - Installer migration framework (`migrations/`) with per-migration applied state in `.dotcortex/.migrations/`
 - Legacy migration `001_legacy_layout_to_dotcortex_tasks.sh` for `.claude` + legacy task-path installs
 - Legacy migration `002_legacy_project_context_to_dotcortex.sh` to move `.claude/knowledge` + `.claude/memory` into `.dotcortex/*`
