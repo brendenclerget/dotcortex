@@ -34,19 +34,22 @@ EOF
 }
 
 detect_dotcortex_version() {
+  # One version namespace everywhere: the exact release tag when the checkout
+  # sits on one, otherwise an explicit "untagged-<sha>" marker. cortex-update
+  # compares this same field against remote release tags.
   local version
 
-  if version="$(git -C "$DOTCORTEX_DIR" describe --tags --abbrev=0 2>/dev/null)"; then
+  if version="$(git -C "$DOTCORTEX_DIR" describe --tags --exact-match 2>/dev/null)"; then
     echo "$version"
     return 0
   fi
 
   if version="$(git -C "$DOTCORTEX_DIR" rev-parse --short HEAD 2>/dev/null)"; then
-    echo "$version"
+    echo "untagged-$version"
     return 0
   fi
 
-  echo "dev"
+  echo "unversioned"
 }
 
 read_json_value() {
@@ -226,16 +229,26 @@ run_migrations
 
 # Ensure canonical/bootstrap paths exist after migration checks.
 mkdir -p "$TARGET_DIR/.dotcortex/commands"
-mkdir -p "$TARGET_DIR/.claude/commands"
 
 # Copy bootstrap commands to canonical location
 cp "$DOTCORTEX_DIR/commands/cortex-init.md" "$TARGET_DIR/.dotcortex/commands/cortex-init.md"
 cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$TARGET_DIR/.dotcortex/commands/cortex-update.md"
 
-# Rebuild minimal symlink view for bootstrap commands
-rm -f "$TARGET_DIR/.claude/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
-ln -s "../../.dotcortex/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-init.md"
-ln -s "../../.dotcortex/commands/cortex-update.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+# Rebuild minimal symlink view for bootstrap commands.
+#
+# CRITICAL: if .claude/commands is already a directory symlink into
+# .dotcortex/commands (the post-init state), the whole view already exposes
+# the canonical files — and writing "through" it would delete the canonical
+# copies we just installed, then leave broken self-referential links behind.
+# Never write through an existing directory symlink.
+if [ -L "$TARGET_DIR/.claude/commands" ]; then
+  echo "View:      .claude/commands is a directory symlink — bootstrap commands already exposed."
+else
+  mkdir -p "$TARGET_DIR/.claude/commands"
+  rm -f "$TARGET_DIR/.claude/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+  ln -s "../../.dotcortex/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-init.md"
+  ln -s "../../.dotcortex/commands/cortex-update.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+fi
 
 write_install_metadata
 

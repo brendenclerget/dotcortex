@@ -96,11 +96,11 @@ Org context: "projects" are small efforts within a domain (checkout, board, rail
 
 ## Workstream 1 — Deterministic core
 
-- [ ] `bin/render.sh` — copies org-base assets, substitutes `{{TOKENS}}`, and records per managed file: SHA-256, **base_version (release tag), and source path** — a hash alone detects change but can't reconstruct the merge base; the stored tag lets update retrieve the exact installed base for a true three-way merge. (`managed_files` is `{}` today — the update path is inert.)
-- [ ] Installer and updater **check out the exact release tag**, never render arbitrary branch HEAD. Tag releases (`v1.5.0`); unify the three incompatible version fields.
-- [ ] `bin/rebuild-views.sh` — single view/layer-resolution engine (see layering contract); init/update/sync/org all call it.
-- [ ] Fix `install.sh` re-run bug (deletes canonical `cortex-init.md` through the directory symlink — reproduced).
-- [ ] Renderer byte-preservation regression test (trailing newlines currently stripped).
+- [x] `bin/render.sh` — copies org-base assets, substitutes `{{TOKENS}}` (byte-preserving; non-UTF8 copied verbatim; unresolved tokens warn, `--strict` fails), records per managed file: SHA-256 of rendered output, **base_version, source path** into `config.json.managed_files`.
+- [x] Unified version scheme: `install.sh` writes the exact release tag (`git describe --tags --exact-match`) or explicit `untagged-<sha>`; `cortex-update` checks out the latest release tag (never branch HEAD) and compares the same field; three-way merge base retrievable via `managed_files[].base_version`. *(The `v1.5.0` tag itself is minted at release/push time.)*
+- [x] `bin/rebuild-views.sh` — single layer-resolution + tool-view engine: org→team per-file symlink resolution, override reporting, marker-gated safety (never deletes unmarked user files), `.claude`/`.agents` views never clobber real dirs.
+- [x] `install.sh` re-run bug fixed: never writes through an existing `.claude/commands` directory symlink (the old path deleted the freshly installed canonical file).
+- [x] `tests/run-tests.sh` — 19 synthetic-fixture assertions: token substitution, trailing-newline byte preservation, manifest sha/base_version, determinism (re-render byte-identical), strict mode, layer resolution + override report + idempotency + safety abort, installer re-run survival, version scheme.
 - [ ] **W3.0 base content refresh lands here** — the render pipeline's first payload is the reconciled base set + workflow policy, so determinism ships with the good content.
 
 ## Workstream 2A — Namespaced remote task repo (no Linear yet)

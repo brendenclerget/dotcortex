@@ -71,7 +71,7 @@ Ticket plans go stale — especially in workspaces where multiple sessions or ag
 - Snapshot `git status --porcelain` (per component repo if applicable). Files left dirty by other sessions are **untouchable** — if the ticket's scope requires editing one, stop and surface the collision instead of proceeding into it.
 - If the plan needs correcting, **update the ticket file now** (amend the plan/checklist, note what changed and why, dated) — the ticket stays the source of truth. Scope *corrections* are yours to make; scope *changes* (dropping an acceptance criterion, adding a feature) are the user's call — surface the question, and continue with the unaffected parts if any.
 
-**Never strand the claim.** You now hold an IN_PROGRESS claim (Step 3). If anything from here on stops the work entirely before code lands — a dirty-file collision, a scope question that gates the whole ticket, or any other blocker — release the claim before stopping: run the `/ticket-status` workflow to set `Status:` → `BLOCKED` with a dated note naming exactly what it's blocked on (and clear `Assignee:` if nothing is in flight), commit and push. A ticket must never be left IN_PROGRESS with nobody working it.
+**Never strand the claim.** You now hold an IN_PROGRESS claim (Step 3). If anything from here on stops the work entirely before code lands — a dirty-file collision, a scope question that gates the whole ticket, or any other blocker — release the claim before stopping: run the `/ticket-status` workflow to set `Status:` → `BLOCKED` with a dated note naming exactly what it's blocked on, commit and push. A ticket must never be left IN_PROGRESS with nobody working it.
 
 ## Step 7: Implement
 

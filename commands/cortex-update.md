@@ -58,34 +58,33 @@ Migration must be idempotent and safe to re-run.
 ### Step 2: Clone Latest
 
 ```bash
-# Clone to temp directory, shallow, latest only
+# Clone with tags and CHECK OUT the exact latest release tag.
+# Never render from arbitrary branch HEAD.
 TEMP_DIR=$(mktemp -d)
-git clone --depth 1 "$SOURCE_REPO" "$TEMP_DIR/dotcortex"
-
-# Get the latest tag
+git clone "$SOURCE_REPO" "$TEMP_DIR/dotcortex"
 cd "$TEMP_DIR/dotcortex"
-LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
+LATEST_TAG=$(git tag --sort=-v:refname | head -1)
+if [ -z "$LATEST_TAG" ]; then echo "No release tags upstream — aborting update."; fi
+git checkout --quiet "$LATEST_TAG"
 ```
 
-If `LATEST_TAG` equals the installed version, report "Already up to date" and clean up.
+The installed version is `dotcortex_version` in `install-info.json` (the same value install.sh wrote — an exact tag, or `untagged-<sha>` for dev installs). If `LATEST_TAG` equals it, report "Already up to date" and clean up.
 
 ### Step 3: Compare Each Managed File
 
+Each `managed_files` entry records `{sha256, base_version, source}` — written by `bin/render.sh` at install time. `base_version` is the exact tag the file was rendered from, so the true installed base is always retrievable (`git checkout <base_version> -- <source>` in the temp clone) for a real three-way merge.
+
 For each file in `managed_files`:
 
-1. **Render the new upstream version:**
-   - Read the corresponding file from `$TEMP_DIR/dotcortex/`
-   - Replace all instances of `PREFIX` with `config.prefix`
-   - Replace all instances of `TASKS_DIR` with `.dotcortex/tasks`
+1. **Render the new upstream version** with `bin/render.sh` (from the checked-out tag; `{{TOKEN}}` substitution from config — see the renderer for the token map).
 
-2. **Hash the new rendered version** (SHA-256)
-
-3. **Determine what changed:**
+2. **Determine what changed:**
 
 ```
-installed_hash = managed_files[path]        # what we installed last time
-current_hash   = sha256(user's current file) # what's on disk now
+installed_hash = managed_files[path].sha256   # what we installed last time
+current_hash   = sha256(user's current file)  # what's on disk now
 new_hash       = sha256(new rendered file)    # what upstream looks like now
+base_file      = source file at managed_files[path].base_version  # merge base
 ```
 
 4. **Decide action:**
