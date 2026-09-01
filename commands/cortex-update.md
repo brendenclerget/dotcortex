@@ -119,7 +119,7 @@ For each conflict (both upstream and user changed), **attempt a real three-way m
 git merge-file -p <current> <base> <new> > <merged> && CLEAN=1 || CLEAN=0
 ```
 
-- **Clean merge** (`CLEAN=1`): apply `<merged>`, report it as "merged (upstream + your changes)" in the summary. No prompt needed.
+- **Clean merge** (`CLEAN=1`): apply `<merged>`, report it as "merged (upstream + your changes)" in the summary. No prompt needed. **Manifest bookkeeping for merged files:** record `sha256 = hash of the NEW RENDERED CANDIDATE` (not of the merged file) with `base_version: $LATEST_TAG` — the merged content on disk then correctly reads as user-modified at the next update, and the rendered base at `$LATEST_TAG` reproduces the recorded hash. Recording the merged file's own hash instead would make the next update's rendered-base drift check fail unconditionally.
 - **Merge conflicts**: fall through to the interactive prompt below.
 
 Present to the user:
@@ -146,9 +146,9 @@ If user picks "Show full diff", display both versions clearly labeled, then ask 
 
 ### Step 6: Apply Updates
 
-For each file being updated (auto-updates + user-approved overwrites):
-1. Write the new rendered version to disk
-2. Update the checksum in `managed_files`
+For each file being updated:
+1. Write the file to disk: the new rendered version (auto-updates and "take upstream"), or the merged output (clean three-way merges)
+2. Update `managed_files`: **always** `{sha256: hash of the new rendered candidate, base_version: $LATEST_TAG, source}` — for every applied file including merged ones (see Step 5's bookkeeping rule); never the hash of merged content
 
 ### Step 7: Update Version + Config
 
@@ -160,11 +160,9 @@ Update `.dotcortex/config.json`:
 - Set `updated_at` to today's date
 - Update `managed_files`: new `{sha256, base_version: $LATEST_TAG, source}` entries for every applied file (config.json does **not** store a version field)
 
-### Step 8: Clean Up and Report
+### Step 8: Report
 
-```bash
-rm -rf "$TEMP_DIR"
-```
+(Cleanup happens at the END of Step 9 — the rebuild engine runs from the temp clone, so `$TEMP_DIR` must still exist.)
 
 Print summary:
 ```
@@ -199,10 +197,10 @@ The update command needs to know which dotcortex source file maps to which insta
 
 ### Step 9: Rebuild Views
 
-Layer resolution and tool views have exactly one engine — run it:
+Layer resolution and tool views have exactly one engine — run it **from the checked-out temp clone** (the project itself may not ship `bin/`):
 
 ```bash
-bin/rebuild-views.sh --root <project-root>
+"$TEMP_DIR/dotcortex/bin/rebuild-views.sh" --root <project-root>
 ```
 
 It resolves `layers/org` → `layers/team` (team wins, overrides reported) into the `.dotcortex/` resolved directories and points the `.claude/`/`.agents/` views at them. Do not re-describe or re-implement any of that here.
@@ -211,7 +209,11 @@ Afterwards:
 1. Ensure `.tasks` points to `.dotcortex/tasks`
 2. Tool-specific regeneration for each tool in `config.tools`: `codex` → regenerate `AGENTS.md` from `CLAUDE.md`; `gemini` → regenerate `GEMINI.md`; `cursor` → regenerate `.cursor/rules/*.mdc` from current skills
 
-Report any tool-specific files updated in the Step 8 summary.
+Report any tool-specific files updated in the Step 8 summary, then clean up:
+
+```bash
+rm -rf "$TEMP_DIR"
+```
 
 ## Edge Cases
 

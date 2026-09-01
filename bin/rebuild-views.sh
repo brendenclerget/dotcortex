@@ -86,10 +86,25 @@ resolve_category() {
   done
 }
 
+# Same rule as the installer: a symlink pointing at the expected resolved dir
+# stays; a dangling one is repaired; one pointing anywhere else aborts untouched.
 ensure_view_link() {
-  local view="$1" target="$2"
+  local view="$1" target="$2" expected_dir="$3"
   if [ -L "$view" ]; then
-    rm -f "$view"
+    local expected actual
+    expected="$(cd "$expected_dir" && pwd -P)"
+    actual="$(cd "$view" 2>/dev/null && pwd -P || true)"
+    if [ "$actual" = "$expected" ]; then
+      return 0
+    elif [ -z "$actual" ]; then
+      echo "rebuild-views.sh: repairing dangling view symlink: $view"
+      rm -f "$view"
+    else
+      echo "rebuild-views.sh: ABORT — $view is a symlink to an unexpected location:" >&2
+      echo "  $actual (expected $expected)" >&2
+      echo "  Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+      exit 1
+    fi
   elif [ -e "$view" ]; then
     echo "rebuild-views.sh: WARN — $view exists and is not a symlink; leaving it untouched." >&2
     return 0
@@ -104,8 +119,8 @@ done
 
 # Tool views point at resolved dirs (only for categories that resolved).
 for cat in commands skills knowledge memory; do
-  [ -d "$DC/$cat" ] && ensure_view_link "$ROOT/.claude/$cat" "../.dotcortex/$cat"
+  [ -d "$DC/$cat" ] && ensure_view_link "$ROOT/.claude/$cat" "../.dotcortex/$cat" "$DC/$cat"
 done
-[ -d "$DC/skills" ] && ensure_view_link "$ROOT/.agents/skills" "../.dotcortex/skills"
+[ -d "$DC/skills" ] && ensure_view_link "$ROOT/.agents/skills" "../.dotcortex/skills" "$DC/skills"
 
 echo "rebuild-views.sh: done ($ROOT)"

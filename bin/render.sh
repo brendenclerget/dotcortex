@@ -135,16 +135,36 @@ for rel in sorted(outputs):
         "source": os.path.join(source_prefix, rel) if source_prefix else rel,
     }
 
-stale = sorted(set(config.get("managed_files", {})) - set(new_manifest))
+# Stale cleanup. managed_files keys are data from a mutable config file —
+# treat them as untrusted: never delete outside dest, and never delete a file
+# the user has modified since we rendered it.
+old_manifest = config.get("managed_files", {})
+stale = sorted(set(old_manifest) - set(new_manifest))
+dest_abs = os.path.abspath(dest)
+removed = 0
 for rel in stale:
-    path = os.path.join(dest, rel)
-    if os.path.isfile(path):
-        os.remove(path)
-        d = os.path.dirname(path)
-        while d != dest and os.path.isdir(d) and not os.listdir(d):
+    norm = os.path.normpath(rel)
+    candidate = os.path.abspath(os.path.join(dest_abs, norm))
+    if os.path.isabs(rel) or not (candidate == dest_abs or
+                                  candidate.startswith(dest_abs + os.sep)):
+        print(f"render.sh: REFUSING stale manifest entry escaping dest: {rel}",
+              file=sys.stderr)
+        continue
+    if os.path.isfile(candidate):
+        with open(candidate, "rb") as f:
+            current_hash = hashlib.sha256(f.read()).hexdigest()
+        recorded = old_manifest.get(rel, {}).get("sha256")
+        if current_hash != recorded:
+            print(f"render.sh: CONFLICT — stale file was modified after rendering, "
+                  f"left in place (now unmanaged): {norm}", file=sys.stderr)
+            continue
+        os.remove(candidate)
+        removed += 1
+        d = os.path.dirname(candidate)
+        while d != dest_abs and os.path.isdir(d) and not os.listdir(d):
             os.rmdir(d)
             d = os.path.dirname(d)
-    print(f"render.sh: removed stale rendered file: {rel}")
+        print(f"render.sh: removed stale rendered file: {norm}")
 
 config["managed_files"] = new_manifest
 with open(config_path, "w") as f:
@@ -152,5 +172,5 @@ with open(config_path, "w") as f:
     f.write("\n")
 
 print(f"render.sh: rendered {len(new_manifest)} files -> {dest} "
-      f"(base_version {base_version}, {len(stale)} stale removed)")
+      f"(base_version {base_version}, {removed} stale removed)")
 PYEOF

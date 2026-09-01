@@ -85,6 +85,48 @@ fi
 assert_not "--strict wrote no dest files" test -e "$WORK/t2/strict-out"
 [ "$CFG_SHA_BEFORE" = "$(sha "$WORK/t1/config.json")" ] && ok "--strict left config untouched" || fail "--strict left config untouched"
 
+# Traversal refusal: a poisoned ../ manifest key must never delete outside dest
+PRJT="$WORK/t2-trav"; mkdir -p "$PRJT/src" "$PRJT/out"
+printf 'safe {{TICKET_PREFIX}}\n' > "$PRJT/src/keep.md"
+cat > "$PRJT/cfg.json" <<'EOF'
+{"config": {"prefix": "APP", "tasks_dir": "t"}}
+EOF
+printf 'do not delete me\n' > "$PRJT/victim.md"
+bash "$REPO/bin/render.sh" --source "$PRJT/src" --dest "$PRJT/out" --config "$PRJT/cfg.json" --base-version v1 >/dev/null 2>&1
+python3 - "$PRJT/cfg.json" <<'EOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+c["managed_files"]["../victim.md"] = {"sha256": "0"*64, "base_version": "v0", "source": "x"}
+json.dump(c, open(sys.argv[1], "w"), indent=2)
+EOF
+TRAV_ERR="$WORK/t2-trav-err.txt"
+bash "$REPO/bin/render.sh" --source "$PRJT/src" --dest "$PRJT/out" --config "$PRJT/cfg.json" --base-version v1 >/dev/null 2>"$TRAV_ERR"
+assert "traversal stale key refused (victim survives)" test -f "$PRJT/victim.md"
+assert "traversal refusal reported" grep -q 'REFUSING stale manifest entry escaping dest' "$TRAV_ERR"
+
+# Modified-stale refusal: user edited a rendered file that later went stale
+PRJM="$WORK/t2-mod"; mkdir -p "$PRJM/src" "$PRJM/out"
+printf 'a {{TICKET_PREFIX}}\n' > "$PRJM/src/a.md"
+printf 'b {{TICKET_PREFIX}}\n' > "$PRJM/src/b.md"
+cat > "$PRJM/cfg.json" <<'EOF'
+{"config": {"prefix": "APP", "tasks_dir": "t"}}
+EOF
+bash "$REPO/bin/render.sh" --source "$PRJM/src" --dest "$PRJM/out" --config "$PRJM/cfg.json" --base-version v1 >/dev/null 2>&1
+printf 'user edits after render\n' >> "$PRJM/out/b.md"
+rm "$PRJM/src/b.md"
+MOD_ERR="$WORK/t2-mod-err.txt"
+bash "$REPO/bin/render.sh" --source "$PRJM/src" --dest "$PRJM/out" --config "$PRJM/cfg.json" --base-version v2 >/dev/null 2>"$MOD_ERR"
+assert "modified stale file preserved" grep -q 'user edits after render' "$PRJM/out/b.md"
+assert "modified-stale conflict reported" grep -q 'CONFLICT' "$MOD_ERR"
+assert_not "modified stale file dropped from manifest" grep -q '"b.md"' "$PRJM/cfg.json"
+
+# Unmodified-stale still deleted (convergence intact after the safety change)
+printf 'c {{TICKET_PREFIX}}\n' > "$PRJM/src/c.md"
+bash "$REPO/bin/render.sh" --source "$PRJM/src" --dest "$PRJM/out" --config "$PRJM/cfg.json" --base-version v3 >/dev/null 2>&1
+rm "$PRJM/src/c.md"
+bash "$REPO/bin/render.sh" --source "$PRJM/src" --dest "$PRJM/out" --config "$PRJM/cfg.json" --base-version v4 >/dev/null 2>&1
+assert_not "unmodified stale file still deleted" test -e "$PRJM/out/c.md"
+
 # ---------- T3: rebuild-views ----------
 echo "T3: rebuild-views.sh resolution + safety"
 PRJ="$WORK/t3"; mkdir -p "$PRJ/.dotcortex/layers/org/commands" "$PRJ/.dotcortex/layers/team/commands" "$PRJ/.dotcortex/layers/org/skills/demo"
@@ -122,6 +164,24 @@ else
 fi
 rm -f "$PRJ/.dotcortex/commands/user.md"
 assert "rebuild recovers after offender removed" bash "$REPO/bin/rebuild-views.sh" --root "$PRJ"
+
+# Safety 3 (regression): tool-view symlink pointing somewhere unexpected -> abort untouched
+mkdir -p "$PRJ/custom-commands"
+rm -f "$PRJ/.claude/commands"
+ln -s "../custom-commands" "$PRJ/.claude/commands"
+if bash "$REPO/bin/rebuild-views.sh" --root "$PRJ" >/dev/null 2>&1; then
+  fail "unexpected tool-view symlink: rebuild aborts"
+else
+  ok "unexpected tool-view symlink: rebuild aborts"
+fi
+[ "$(cd "$PRJ/.claude/commands" && pwd -P)" = "$(cd "$PRJ/custom-commands" && pwd -P)" ] \
+  && ok "unexpected tool-view symlink left untouched" || fail "unexpected tool-view symlink left untouched"
+
+# Safety 4: dangling tool-view symlink -> repaired
+rm -f "$PRJ/.claude/commands"
+ln -s "../nonexistent-target" "$PRJ/.claude/commands"
+bash "$REPO/bin/rebuild-views.sh" --root "$PRJ" >/dev/null 2>&1 || fail "dangling tool-view symlink: rebuild succeeds"
+assert "dangling tool-view symlink repaired" grep -q 'team x' "$PRJ/.claude/commands/x.md"
 
 # ---------- T4: installer re-run over symlinked views ----------
 echo "T4: install.sh re-run safety"
