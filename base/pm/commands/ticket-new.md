@@ -121,13 +121,25 @@ Ask: "Should I break this into subtasks?"
 ## Step 5b: The allocation transaction (pure-markdown mode)
 
 With the full draft ready (parent + any letter-child drafts + the BACKLOG row), run
-ONE transaction that allocates the ID and lands everything. **Take the shared
-transaction lock first** — the same lock `task-tx.sh` uses — so parallel sessions on
-this checkout serialize and cannot read the same counter value:
+ONE transaction that allocates the ID and lands everything.
+
+**Pre-flight:** `.ticket_counter` and `BACKLOG.md` must be CLEAN before you start
+(`git -C {{TASKS_DIR}} status --porcelain -- .ticket_counter BACKLOG.md` empty). If
+another session left them dirty, stop and surface it — the rollback below is only
+safe because every change to those files is provably this transaction's own.
+
+**Take the shared transaction lock** — the same lock `task-tx.sh` uses — so parallel
+sessions on this checkout serialize and cannot read the same counter value (bounded
+wait; a lock held past the timeout means a crashed session — surface it, don't delete
+it yourself):
 
 ```bash
 LOCKDIR="$(git -C {{TASKS_DIR}} rev-parse --absolute-git-dir)/dotcortex-tx.lock"
-until mkdir "$LOCKDIR" 2>/dev/null; do sleep 1; done
+tries=0
+until mkdir "$LOCKDIR" 2>/dev/null; do
+  tries=$((tries+1)); [ $tries -ge 60 ] && { echo "lock held too long: $LOCKDIR"; exit 1; }
+  sleep 1
+done
 trap 'rmdir "$LOCKDIR" 2>/dev/null' EXIT
 
 attempt=0
@@ -169,6 +181,11 @@ done
 ```
 
 The `trap` releases the lock when the command finishes (success or failure).
+
+**If all 5 attempts exhaust** (pathological contention): release the lock, keep the
+drafted content in scratch, and report the failure with the draft location — never
+leave partial files in the tasks dir. **No remote configured** (solo/local mode):
+skip the pull and push lines; the commit alone completes the transaction.
 
 Letter subtasks created here ride inside the same transaction (same family folder,
 same commit) — they consume no counter numbers and never get their own transaction.

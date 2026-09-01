@@ -30,6 +30,16 @@ Available commands:
 - `/backlog` - Show current prioritized backlog
 - `/standup` - Progress summary from git + ticket state
 
+## /pm new <description> — the simple-ticket workflow
+
+For work under ~4 hours (larger scope → `/ticket-new`, which handles breakdown):
+
+1. Draft the ticket from `.dotcortex/templates/simple-ticket-template.md` (Status TODO, priority, description) — in scratch, not in the tasks dir.
+2. Allocate + land via the SAME allocation transaction `/ticket-new` Step 5b defines (pre-flight clean check, shared lock, pull → allocate from counter → write file + counter + BACKLOG row → scoped commit → push, retry on rejection). Linear block applies: issue-first when connected. No remote → skip pull/push.
+3. Report the new ID and backlog placement.
+
+There is no circular hand-off: `/pm new` = this workflow; `/ticket-new` = parent/feature workflow. Both share one allocation transaction.
+
 ## Full Command Index
 
 Every command shipped with the PM profile:

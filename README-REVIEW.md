@@ -336,7 +336,7 @@ git clone https://github.com/brendenclerget/dotcortex.git ~/dotcortex
 
 The init interview configures your ticket prefix, task storage, workflow policy, and optional integrations, then renders the base through the deterministic pipeline and generates the project-specific pieces (CLAUDE.md, stack skills, knowledge scaffolds).
 
-Re-running `install.sh` on an existing project refreshes the engine and bootstrap commands only — rendered content updates via `/cortex-update` (which checks out the exact latest release tag and does a true three-way merge against what you originally installed, so your local edits survive).
+Re-running `install.sh` on an existing project refreshes the engine, schema, and bootstrap commands only — rendered content updates via `/cortex-update` (which checks out the exact latest release tag and does a true three-way merge against what you originally installed, so your local edits survive).
 
 ## How It Works
 
@@ -364,8 +364,8 @@ Re-running `install.sh` on an existing project refreshes the engine and bootstra
 ```
 
 Two kinds of content, deliberately separate:
-- **Rendered base** (identical for everyone): PM commands, review workflow, templates — from `base/` profiles, tracked in a manifest with hashes and the release tag they came from.
-- **Generated context** (unique to your project): CLAUDE.md, stack skills, knowledge, memory — written fresh from the scan + interview into your team/local layer (`.dotcortex/layers/team/`), published to the resolved views by the rebuild, and never touched by updates.
+- **Rendered base** (identical for identical inputs — same release tag, profiles, and config): PM commands, review workflow, templates — from `base/` profiles, tracked in a manifest with hashes and the release tag they came from.
+- **Generated context** (unique to your project): stack skills, knowledge, and memory are written fresh from the scan + interview into your team/local layer (`.dotcortex/layers/team/`) and published to the resolved views by the rebuild; `CLAUDE.md` lives at the project root with its rules blocks rendered from config inside managed markers. None of it is touched by updates.
 
 ## What Gets Installed
 
@@ -390,7 +390,7 @@ Two kinds of content, deliberately separate:
 | Django / FastAPI | `python-backend` |
 | Go (gin, chi, echo) | `go-backend` |
 
-Skills auto-invoke on context keywords and get enriched with project-specific patterns as you work.
+Skills auto-invoke on context keywords; project-specific learnings accrue alongside them through `/ticket-close` knowledge extraction and team-layer promotion.
 
 ### Workflow policy
 
@@ -473,7 +473,7 @@ Claude Code is the primary target, but the same canonical `.dotcortex/` drives g
 
 ## Knowledge System
 
-Knowledge grows as you work: `/ticket-close` extracts gotchas, decisions, and patterns (with date + code evidence) into the team layer; manual entries are welcome anytime; everything persists across sessions. Facts commit directly; "always do X" rules become skill/policy proposals instead — opinions get reviewed, facts don't.
+Knowledge grows as you work: `/ticket-close` extracts gotchas, decisions, and patterns (with date + code evidence) into the team layer; manual entries are welcome anytime; everything persists across sessions. Facts commit directly; "always do X" rules are not written as knowledge — they become skill/policy change proposals instead.
 
 ## Updating
 
@@ -502,7 +502,7 @@ dotcortex/
 ├── base/                     # The shipped base, by install profile
 │   ├── profiles.json
 │   ├── core/  pm/  review/   # commands, skills, templates per profile
-│   └── packs/                # testing, design, launch-planning (opt-in)
+│   └── packs/                # testing, design (opt-in); launch-planning (future, disabled)
 ├── commands/                 # Bootstrap + lifecycle: cortex-init/update/sync/push, /context
 ├── schemas/config.schema.json
 ├── scripts/                  # migrate-task-repo.sh, check-debrand.sh, migrate-tasks.sh

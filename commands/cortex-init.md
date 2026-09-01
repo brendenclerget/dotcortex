@@ -299,7 +299,7 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 
 **Q13: Team context connection** (only if Q5a = org_connected)
 - Question: "Connect to a team context repo (shared skills/commands/knowledge/policy)?"
-- On connect, **run the `/context add` flow** (clone into `.dotcortex/layers/team/`, contract sanity check, inherit `policy/workflow_policy.json` into config, gitignore the checkout, rebuild views) — do not just record a pointer.
+- On connect, **record the answer now, execute later**: the `/context add` flow (clone, contract check, policy inheritance, gitignore, rebuild) requires `config.json` and runs in Phase 4.6b — AFTER config is written (4.9 runs first in the generation order) and after generated project content lands in the local layer, so the merge-local-content path applies. Do not clone during the interview.
 - Header: "Org repo"
 - Options:
   - "Select existing repo (discover via gh)"
@@ -470,7 +470,7 @@ Task paths are fixed in v1.5:
 - Canonical: `.dotcortex/tasks/`
 - Compatibility view: `.tasks/ -> .dotcortex/tasks/`
 
-**Base assets are NOT copied by the model.** They render through the deterministic pipeline:
+**Base assets are NOT copied by the model.** They render through the deterministic pipeline. Augment-mode scope: "augment, don't overwrite" applies to GENERATED project content (team-layer skills/knowledge/memory, CLAUDE.md prose outside markers). The managed org layer is always rendered authoritatively — user customizations belong in the team layer, which the render never touches; a user-modified managed file is detected by hash and surfaced, not silently clobbered.
 
 1. Write `.dotcortex/config.json` first (Phase 4.9's schema — the renderer reads token values from it).
 2. Locate the source checkout: `source_checkout` in `.dotcortex/install-info.json` (recorded by install.sh). If that path no longer exists, clone `config.source` and check out the exact tag recorded as `dotcortex_version` in install-info.
@@ -520,6 +520,10 @@ _No tickets yet._
 
 _Ideas and future considerations._
 ```
+
+### 4.6b: Connect team context (if Q13 answered yes)
+
+Now that `config.json` exists and generated content is in the local layer, execute the full `/context add` flow with the Q13 repo URL. Its merge-local-content step carries the freshly generated skills/knowledge/memory into the team checkout (offered as scoped commits). Then continue to 4.6.
 
 ### 4.6: Rebuild Tool Views From Canonical Structure
 
