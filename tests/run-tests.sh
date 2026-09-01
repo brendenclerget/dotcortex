@@ -146,7 +146,7 @@ EOF
 SYM_ERR="$WORK/t2-sym-err.txt"
 bash "$REPO/bin/render.sh" --source "$PRJS/src" --dest "$PRJS/out" --config "$PRJS/cfg.json" --base-version v1 >/dev/null 2>"$SYM_ERR"
 assert "symlinked-dir escape refused (victim survives)" test -f "$PRJS/outside/victim.md"
-assert "symlinked-dir escape reported" grep -q 'real path escapes dest' "$SYM_ERR"
+assert "symlinked-dir escape reported" grep -q 'symlink indirection' "$SYM_ERR"
 
 # Alias key: sub/../a.md must never delete the managed a.md
 PRJA="$WORK/t2-alias"; mkdir -p "$PRJA/src" "$PRJA/out"
@@ -166,6 +166,20 @@ ALIAS_ERR="$WORK/t2-alias-err.txt"
 bash "$REPO/bin/render.sh" --source "$PRJA/src" --dest "$PRJA/out" --config "$PRJA/cfg.json" --base-version v1 >/dev/null 2>"$ALIAS_ERR"
 assert "alias key refused: managed a.md survives" test -f "$PRJA/out/a.md"
 assert "alias refusal reported" grep -q 'REFUSING stale alias' "$ALIAS_ERR"
+
+# Self-referencing dir link (link -> .): stale link/a.md must not delete managed a.md
+ln -s "." "$PRJA/out/selflink"
+python3 - "$PRJA/cfg.json" "$A_SHA" <<'EOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+c["managed_files"]["selflink/a.md"] = {"sha256": sys.argv[2], "base_version": "v0", "source": "x"}
+json.dump(c, open(sys.argv[1], "w"), indent=2)
+EOF
+SELF_ERR="$WORK/t2-self-err.txt"
+bash "$REPO/bin/render.sh" --source "$PRJA/src" --dest "$PRJA/out" --config "$PRJA/cfg.json" --base-version v1 >/dev/null 2>"$SELF_ERR"
+assert "self-referencing link alias refused: a.md survives" test -f "$PRJA/out/a.md"
+assert "symlink indirection reported" grep -q 'symlink indirection' "$SELF_ERR"
+rm -f "$PRJA/out/selflink"
 
 # ---------- T3: rebuild-views ----------
 echo "T3: rebuild-views.sh resolution + safety"
@@ -236,6 +250,21 @@ fi
   && ok "file-target tool-view symlink left untouched" || fail "file-target tool-view symlink left untouched"
 rm -f "$PRJ/.claude/commands"
 
+# Safety 6 (regression): symlink target behind a non-searchable parent -> abort untouched
+mkdir -p "$PRJ/locked/inner"
+chmod 000 "$PRJ/locked"
+rm -f "$PRJ/.claude/commands"
+ln -s "../locked/inner" "$PRJ/.claude/commands"
+if bash "$REPO/bin/rebuild-views.sh" --root "$PRJ" >/dev/null 2>&1; then
+  fail "inaccessible-target tool-view symlink: rebuild aborts"
+else
+  ok "inaccessible-target tool-view symlink: rebuild aborts"
+fi
+[ -L "$PRJ/.claude/commands" ] && [ "$(readlink "$PRJ/.claude/commands")" = "../locked/inner" ] \
+  && ok "inaccessible-target symlink left untouched" || fail "inaccessible-target symlink left untouched"
+chmod 755 "$PRJ/locked"
+rm -f "$PRJ/.claude/commands"
+
 # ---------- T4: installer re-run over symlinked views ----------
 echo "T4: install.sh re-run safety"
 TGT="$WORK/t4"; mkdir -p "$TGT"
@@ -268,6 +297,20 @@ else
 fi
 [ -L "$TGT/.claude/commands" ] && [ "$(readlink "$TGT/.claude/commands")" = "../plainfile" ] \
   && ok "file-target symlink left untouched" || fail "file-target symlink left untouched"
+
+# Symlink target behind non-searchable parent -> abort untouched (installer path)
+mkdir -p "$TGT/locked2/inner"
+chmod 000 "$TGT/locked2"
+rm -rf "$TGT/.claude/commands"
+ln -s "../locked2/inner" "$TGT/.claude/commands"
+if bash "$REPO/install.sh" --yes "$TGT" >/dev/null 2>&1; then
+  fail "inaccessible-target symlink: install aborts"
+else
+  ok "inaccessible-target symlink: install aborts"
+fi
+[ -L "$TGT/.claude/commands" ] && [ "$(readlink "$TGT/.claude/commands")" = "../locked2/inner" ] \
+  && ok "inaccessible-target symlink left untouched (install)" || fail "inaccessible-target symlink left untouched (install)"
+chmod 755 "$TGT/locked2"
 
 # Wrong-target symlink -> abort, untouched
 mkdir -p "$TGT/elsewhere"

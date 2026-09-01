@@ -91,12 +91,27 @@ resolve_category() {
 ensure_view_link() {
   local view="$1" target="$2" expected_dir="$3"
   if [ -L "$view" ]; then
-    local expected actual
+    local expected actual state
     expected="$(cd "$expected_dir" && pwd -P)"
-    if [ ! -e "$view" ]; then
+    # Distinguish a truly missing target (ENOENT -> repairable) from one we
+    # merely cannot see (EACCES, ELOOP, ... -> unexpected, abort untouched).
+    state="$(python3 -c '
+import os, sys
+try:
+    os.stat(sys.argv[1]); print("exists")
+except FileNotFoundError:
+    print("missing")
+except OSError:
+    print("unknown")' "$view")"
+    if [ "$state" = "missing" ]; then
       # Truly dangling (target does not exist at all): safe to repair.
       echo "rebuild-views.sh: repairing dangling view symlink: $view"
       rm -f "$view"
+    elif [ "$state" = "unknown" ]; then
+      echo "rebuild-views.sh: ABORT — cannot verify target of symlink $view (permission/loop):" >&2
+      echo "  $(readlink "$view")" >&2
+      echo "  Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+      exit 1
     else
       # Target exists. Only an accessible DIRECTORY resolving to the expected
       # path is acceptable; a file target or inaccessible dir is "unexpected",

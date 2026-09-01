@@ -246,10 +246,24 @@ cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$TARGET_DIR/.dotcortex/commands/c
 NEED_FILE_LINKS=1
 if [ -L "$TARGET_DIR/.claude/commands" ]; then
   EXPECTED_TARGET="$(cd "$TARGET_DIR/.dotcortex/commands" && pwd -P)"
-  if [ ! -e "$TARGET_DIR/.claude/commands" ]; then
+  # ENOENT -> repairable; EACCES/ELOOP/etc -> unexpected, abort untouched.
+  LINK_STATE="$(python3 -c '
+import os, sys
+try:
+    os.stat(sys.argv[1]); print("exists")
+except FileNotFoundError:
+    print("missing")
+except OSError:
+    print("unknown")' "$TARGET_DIR/.claude/commands")"
+  if [ "$LINK_STATE" = "missing" ]; then
     # Truly dangling (target does not exist): safe to repair.
     echo "View:      .claude/commands is a BROKEN symlink — repairing."
     rm -f "$TARGET_DIR/.claude/commands"
+  elif [ "$LINK_STATE" = "unknown" ]; then
+    echo "Error: cannot verify target of .claude/commands symlink (permission/loop):" >&2
+    echo "  $(readlink "$TARGET_DIR/.claude/commands")" >&2
+    echo "Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+    exit 1
   else
     # Target exists — only an accessible directory resolving to the expected
     # path is valid; a file target or inaccessible dir aborts untouched.

@@ -152,14 +152,15 @@ for rel in stale:
         print(f"render.sh: REFUSING stale manifest entry escaping dest: {rel}",
               file=sys.stderr)
         continue
-    # …then physical: a symlinked directory beneath dest must not smuggle the
-    # deletion outside. The candidate's PARENT must resolve inside dest.
-    parent_real = os.path.realpath(os.path.dirname(candidate))
-    if not (parent_real == dest_real or parent_real.startswith(dest_real + os.sep)):
-        print(f"render.sh: REFUSING stale entry whose real path escapes dest: {rel}",
+    # …then physical: the candidate must resolve to EXACTLY where it lexically
+    # claims to live. Any symlink indirection anywhere in the path (escape dirs,
+    # self-referencing links like `link -> .`, leaf links) fails this equality
+    # and is refused. Deletion only ever touches a plain file at its plain path.
+    if os.path.realpath(candidate) != os.path.join(dest_real, norm):
+        print(f"render.sh: REFUSING stale entry with symlink indirection: {rel}",
               file=sys.stderr)
         continue
-    # An alias key (e.g. "sub/../a.md") must never delete a currently managed file.
+    # A lexical alias key (e.g. "sub/../a.md") must never delete a managed file.
     if norm in new_manifest:
         print(f"render.sh: REFUSING stale alias of a managed file: {rel} -> {norm}",
               file=sys.stderr)
