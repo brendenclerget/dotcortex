@@ -198,7 +198,7 @@ the report rather than reopening the close.
 > **Linear:** If the Linear MCP is available in this session, set the ticket's linked issue to Done. If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
 
 If the issue update fails, record a pending-sync note as its own scoped follow-up
-transaction (the archived ticket file is the exact path: `git -C {{TASKS_DIR}} add <archived-ticket> && git commit -m "$ARGUMENTS: pending Linear sync" && git push`).
+transaction (the archived ticket file is the exact path: `git -C {{TASKS_DIR}} add <archived-ticket> && git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: pending Linear sync" && git -C {{TASKS_DIR}} push`).
 A failed follow-up never undoes or duplicates an already-valid close; the next status
 touch retries the Linear update and clears the marker.
 
