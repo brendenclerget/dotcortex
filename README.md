@@ -48,12 +48,13 @@ Solo? `/cortex-init` interviews you and sets everything up standalone.
 **Org?** Three commands, one shared org repo (your teams' context + all markdown tasks, pulled into everyone's code folder — dotcortex itself is just the tool):
 
 ```
-/init-org                     # first time: create (or clone) the org repo
-/init-team payments           # scaffold a team: context dirs, policy, prefix (registry-checked)
-/init-project payments api    # wire THIS workspace: inherit policy, render, connect tasks
+/init-org                     # first lead, once: creates (or clones) the org repo — and walks
+                              # straight through the first /init-team + /init-project for you
+/init-team checkout           # LATER teams: context dirs, policy, prefix (registry-checked)
+/init-project checkout web    # ADDITIONAL workspaces: inherit policy, render, connect tasks
 ```
 
-A teammate onboards by cloning the org repo and running `/init-project` in their workspace. That's it.
+A teammate onboards by cloning the org repo into their code folder, running `install.sh` on their project, then `/init-project <team> <project>` in the workspace. That's it.
 
 Re-running `install.sh` on an existing project refreshes the engine, schema, and bootstrap commands only — rendered content updates via `/cortex-update` (which checks out the exact latest release tag and does a true three-way merge against what you originally installed, so your local edits survive).
 

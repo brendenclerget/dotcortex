@@ -31,17 +31,16 @@ git -C "$DIR" rev-parse --git-dir >/dev/null 2>&1 || { echo "task-tx.sh: $DIR is
 HAS_REMOTE=1
 git -C "$DIR" remote get-url origin >/dev/null 2>&1 || HAS_REMOTE=0
 
-# Serialize concurrent local mutations (same checkout, parallel sessions).
+# Serialize ALL operations on this checkout (mutations AND pulls) — a pull
+# racing a mutation on a shared checkout can rebase under its feet.
 LOCKDIR="$(git -C "$DIR" rev-parse --absolute-git-dir)/dotcortex-tx.lock"
-if [ "$PULL_ONLY" -eq 0 ]; then
-  tries=0
-  until mkdir "$LOCKDIR" 2>/dev/null; do
-    tries=$((tries + 1))
-    [ "$tries" -ge 60 ] && { echo "task-tx.sh: lock held too long: $LOCKDIR" >&2; exit 1; }
-    sleep 1
-  done
-  trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
-fi
+tries=0
+until mkdir "$LOCKDIR" 2>/dev/null; do
+  tries=$((tries + 1))
+  [ "$tries" -ge 60 ] && { echo "task-tx.sh: lock held too long: $LOCKDIR" >&2; exit 1; }
+  sleep 1
+done
+trap 'rmdir "$LOCKDIR" 2>/dev/null || true' EXIT
 
 # --autostash: callers legitimately edit tracked files BEFORE the transaction
 # runs; the stash carries the working tree over the rebase and restores it.

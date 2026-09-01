@@ -540,6 +540,43 @@ bash "$REPO/bin/task-tx.sh" --dir "$U2" --msg "APP-007: create" teams/acme/proje
 ( cd "$U2" && ! git log --oneline -1 --name-only | grep -q "APP-006" ) \
   && ok "commit contains only the given paths" || fail "commit contains only the given paths"
 
+# ---------- T8: shared org checkout — symlinked team layer + knowledge capture ----------
+echo "T8: org-repo shared checkout integration"
+ORG="$WORK/t8/org"; mkdir -p "$ORG"
+git init -q "$ORG" && ( cd "$ORG" && git config user.email o@t && git config user.name o \
+  && mkdir -p teams/pay/knowledge teams/pay/commands teams/pay/projects/api \
+  && printf 'team override cmd\n' > teams/pay/commands/x.md \
+  && echo "1" > teams/pay/projects/api/.ticket_counter \
+  && printf '# Team Registry\n\n| team_key | prefix | created |\n|---|---|---|\n| pay | PAY | 2026-09-01 |\n' > REGISTRY.md \
+  && git add -A && git commit -qm "org scaffold" )
+WS="$WORK/t8/ws"; mkdir -p "$WS/.dotcortex/layers/org/commands"
+printf 'org base cmd\n' > "$WS/.dotcortex/layers/org/commands/x.md"
+printf 'org only cmd\n' > "$WS/.dotcortex/layers/org/commands/y.md"
+ln -s "$ORG/teams/pay" "$WS/.dotcortex/layers/team"
+bash "$REPO/bin/rebuild-views.sh" --root "$WS" > "$WORK/t8-out.txt" 2>&1 \
+  && ok "rebuild resolves through external team-layer symlink" || fail "rebuild resolves through external team-layer symlink"
+assert "team override wins through the symlink" grep -q 'team override cmd' "$WS/.dotcortex/commands/x.md"
+assert "org base survives non-collision" grep -q 'org only cmd' "$WS/.dotcortex/commands/y.md"
+
+# Knowledge capture through the symlinked layer lands in the org repo
+printf 'a learning\n' > "$WS/.dotcortex/layers/team/knowledge/lesson.md"
+bash "$REPO/bin/task-tx.sh" --dir "$WS/.dotcortex/layers/team" --msg "knowledge: lesson" knowledge/lesson.md >/dev/null 2>&1 \
+  && ok "knowledge capture via symlinked team layer commits" || fail "knowledge capture via symlinked team layer commits"
+( cd "$ORG" && git log -1 --name-only | grep -q 'teams/pay/knowledge/lesson.md' ) \
+  && ok "capture commit lands at teams/<team>/knowledge in the ORG repo" || fail "capture commit lands at teams/<team>/knowledge in the ORG repo"
+
+# --pull-only takes the lock (remote-less: should still lock, skip pull, exit 0)
+bash "$REPO/bin/task-tx.sh" --dir "$ORG" --pull-only >/dev/null 2>&1 \
+  && ok "pull-only succeeds (remote-less, lock taken/released)" || fail "pull-only succeeds (remote-less, lock taken/released)"
+assert_not "lock released after pull-only" test -d "$ORG/.git/dotcortex-tx.lock"
+
+# Bootstrap trio exposed by a fresh install
+TB="$WORK/t8/boot"; mkdir -p "$TB"
+bash "$REPO/install.sh" --yes "$TB" >/dev/null 2>&1
+for c in init-org init-team init-project; do
+  assert "bootstrap exposes /$c" test -f "$TB/.dotcortex/commands/$c.md"
+done
+
 echo ""
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" -eq 0 ]
