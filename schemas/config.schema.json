@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dotcortex project config",
+  "type": "object",
+  "required": ["schema_version", "config"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "source": { "type": "string" },
+    "installed_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "config": {
+      "type": "object",
+      "required": ["prefix", "tasks_dir"],
+      "properties": {
+        "prefix": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}$" },
+        "tasks_dir": { "type": "string", "minLength": 1 },
+        "project_name": { "type": "string" },
+        "component_repos": { "type": "array", "items": { "type": "string" } },
+        "profiles": { "type": "array", "items": { "type": "string" } },
+        "tools": { "type": "array", "items": { "enum": ["claude", "codex", "gemini", "cursor"] } },
+        "task_repo": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" },
+            "checkout_path": { "type": "string" },
+            "branch": { "type": "string" },
+            "team_key": { "type": "string" },
+            "project_key": { "type": "string" }
+          }
+        },
+        "context_repo": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" },
+            "checkout_path": { "type": "string" },
+            "branch": { "type": "string" },
+            "team_key": { "type": "string" }
+          }
+        },
+        "workflow_policy": {
+          "type": "object",
+          "description": "Team-scoped behavior policy. Inherited from the team context when connected; interviewed only at team creation. Values are single resolved tokens.",
+          "properties": {
+            "test_authoring": { "enum": ["allowed", "ask"] },
+            "test_execution": { "enum": ["allowed", "ask", "user_only"] },
+            "server_lifecycle": { "enum": ["allowed", "ask", "user_only"] },
+            "endpoint_probing": { "enum": ["allowed", "ask", "user_only"] },
+            "documentation_creation": { "enum": ["allowed", "ask"] },
+            "ticket_creation": { "enum": ["proactive", "followups_only", "explicit_only"] },
+            "ticket_close": { "enum": ["auto", "ask"] }
+          },
+          "additionalProperties": false
+        },
+        "review": {
+          "type": "object",
+          "description": "Cross-model review executables. Team policy decides WHETHER review runs; these values live in gitignored user config (CLI paths/models are per-machine).",
+          "properties": {
+            "reviewer_cli": { "type": "string" },
+            "reviewer_model": { "type": "string" },
+            "coordinator_cli": { "type": "string" },
+            "coordinator_model": { "type": "string" }
+          }
+        },
+        "linear": {
+          "type": "object",
+          "properties": { "enabled": { "type": "boolean" } }
+        },
+        "git_autonomy": { "enum": ["manual", "commit", "commit_push", "full"] }
+      }
+    },
+    "managed_files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["sha256", "base_version", "source"],
+        "properties": {
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "base_version": { "type": "string" },
+          "source": { "type": "string" }
+        }
+      }
+    }
+  }
+}

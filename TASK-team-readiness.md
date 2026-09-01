@@ -136,14 +136,14 @@ Sequencing: W2C lands after W1 and before the W3.1 task-path items — ticket-cl
 
 TCGTrack's evolved files are the primary source, but several contain behavior that contradicts the frozen contracts — confirmed: `ticket-new` reads/increments the counter directly; `ticket-refine` increments the counter for subtasks (contradicting ticket-new's own "letter subtasks don't consume numbers" rule); `/next` recommends from BACKLOG and ignores the canonical TODO queue; `/standup` assumes the workspace root is a git repo (TCGTrack's isn't). Wholesale replacement would ship these bugs.
 
-- [ ] **Per-file reconciliation matrix** (the W3.0 deliverable): for each base file — behaviors to retain, frozen-contract adaptations (ID transaction, scoped commits, TODO-queue awareness, multi-repo git), project content to remove, target layer + profile, acceptance test. Include: ticket templates must document the full canonical status vocabulary (TODO | IN_PROGRESS | BLOCKED | PLANNING | REVIEW | DONE — templates currently list only three).
-- [ ] **Install profiles (shipped-base manifest):**
+- [x] **Per-file reconciliation matrix** — `docs/reconciliation-matrix.md`: per-file spec (retain/adapt/remove/target), the canonical Linear block, base layout + profiles, config schema, superseded list. All four stale behaviors fixed in `base/` (transactional counter, letter-children refinement, TODO-first /next, per-repo /standup); templates carry the full six-state vocabulary; pm-agent Team Sync restored under the immediate-transaction contract; scoped staging everywhere (incl. ticket-status fix).
+- [x] **Install profiles (shipped-base manifest)** — `base/profiles.json` + `base/{core,pm,review,packs/*}/`; cortex-init assembles staging from enabled profiles → `render.sh --strict` → `rebuild-views.sh`; superseded top-level commands/skills/templates/scaffolds removed (bootstrap + W2C-pending commands remain). Original spec:
   - **Core:** cortex-init/update/sync, commit, rebuild-views, instruction templates, marker machinery.
   - **PM:** pm-agent, all ticket commands (new/refine/breakdown/close/implement/status/audit), `/next`, `/standup`, `/pm`, `/pm-sync` (rewritten on the transaction script), `/todo` + todo-queue, templates, **lightweight backlog validation** (format + consistency checks — the system depends on backlog regeneration even though the full backlog-cleanup audit is excluded).
   - **Review:** `/fix`, optional cross-model implementation review.
   - **Opt-in packs:** testing-automation (Maestro), `/design-implement`.
-- [ ] **CLAUDE.md base rule blocks** as rendered marker sections: Git Safety (as-is), ticket conventions (archive=move, relatedness rule, status-line endings, completion steps), context layout, read-context-first mandate + fillable routing table, quick-start slot.
-- [ ] **Workflow policy (replaces hardcoded rules; keeps existing `git_autonomy` for commit/push):**
+- [x] **CLAUDE.md base rule blocks** — `base/core/scaffolds/CLAUDE.md.template` with five marker blocks (CONTEXT_LAYOUT, RULES, WORKFLOW_POLICY, TICKETS, ROUTING); WORKFLOW_POLICY renders from config; scaffolds excluded from the strict render path (interview templates). Original spec: Git Safety (as-is), ticket conventions (archive=move, relatedness rule, status-line endings, completion steps), context layout, read-context-first mandate + fillable routing table, quick-start slot.
+- [x] **Workflow policy** — `schemas/config.schema.json` validates it (team-scoped, inherited on team connect, interviewed only at creation — cortex-init Q11b with non-interactive defaults; Q11c adds `linear.enabled`); keeps `git_autonomy`. Original spec:
   ```json
   "workflow_policy": {
     "test_authoring":          "allowed | ask",

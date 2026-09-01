@@ -25,7 +25,7 @@ FORBIDDEN=(
 
 fail=0
 for pattern in "${FORBIDDEN[@]}"; do
-  if hits=$(grep -rnE "$pattern" "$@" --include='*.md' --include='*.yaml' --include='*.yml' --include='*.json' 2>/dev/null); then
+  if hits=$(grep -rniE "$pattern" "$@" --include='*.md' --include='*.yaml' --include='*.yml' --include='*.json' 2>/dev/null); then
     echo "FORBIDDEN TOKEN: $pattern"
     echo "$hits" | head -10
     fail=1

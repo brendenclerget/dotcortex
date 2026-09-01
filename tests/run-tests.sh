@@ -346,6 +346,46 @@ bash "$REPO/bin/render.sh" --source "$REPO_FIX/base" --dest "$WORK/t4-repo-out" 
 SRCPATH="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["managed_files"]["commands/z.md"]["source"])' "$REPO_FIX/cfg.json")"
 [ "$SRCPATH" = "base/commands/z.md" ] && ok "manifest source is repository-relative" || fail "manifest source is repository-relative (got: $SRCPATH)"
 
+# ---------- T5: shipped base renders strict-clean + de-branded ----------
+echo "T5: base/ payload renders strict + de-brand"
+STAGE="$WORK/t5/staging"; BOUT="$WORK/t5/out"; mkdir -p "$STAGE"
+# Assemble staging like cortex-init does: enabled profiles + optional packs,
+# commands/skills/templates only (scaffolds are interview templates, not rendered).
+for prof in core pm review packs/testing packs/design; do
+  for sub in commands skills templates; do
+    [ -d "$REPO/base/$prof/$sub" ] && { mkdir -p "$STAGE/$sub"; cp -R "$REPO/base/$prof/$sub/" "$STAGE/$sub/"; }
+  done
+done
+cat > "$WORK/t5/config.json" <<'EOF'
+{"schema_version": 1,
+ "config": {
+   "prefix": "APP", "tasks_dir": ".dotcortex/tasks", "project_name": "ExampleProject",
+   "component_repos": ["api", "app", "web"],
+   "review": {"reviewer_cli": "reviewer-cli", "reviewer_model": "reviewer-model",
+              "coordinator_cli": "coordinator-cli", "coordinator_model": "coordinator-model"},
+   "workflow_policy": {"test_authoring": "allowed", "test_execution": "user_only",
+     "server_lifecycle": "user_only", "endpoint_probing": "ask",
+     "documentation_creation": "ask", "ticket_creation": "followups_only", "ticket_close": "ask"},
+   "linear": {"enabled": true}}}
+EOF
+if bash "$REPO/bin/render.sh" --source "$STAGE" --dest "$BOUT" \
+     --config "$WORK/t5/config.json" --base-version vTEST --strict >/dev/null 2>"$WORK/t5/err.txt"; then
+  ok "base payload renders with --strict (all tokens resolve)"
+else
+  fail "base payload renders with --strict (all tokens resolve)"
+  head -5 "$WORK/t5/err.txt" | sed 's/^/    /'
+fi
+assert "rendered ticket-new carries substituted prefix" grep -q 'APP' "$BOUT/commands/ticket-new.md"
+assert_not "no unsubstituted tokens survive in rendered output" grep -rq '{{[A-Z0-9_]*}}' "$BOUT"
+if bash "$REPO/scripts/check-debrand.sh" "$BOUT" >/dev/null 2>&1; then
+  ok "rendered base output passes de-brand scan"
+else
+  fail "rendered base output passes de-brand scan"
+fi
+assert "base source tree passes de-brand scan" bash "$REPO/scripts/check-debrand.sh" "$REPO/base"
+MCOUNT=$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["managed_files"]))' "$WORK/t5/config.json")
+[ "$MCOUNT" -ge 25 ] && ok "manifest covers the full payload ($MCOUNT files)" || fail "manifest covers the full payload (got $MCOUNT)"
+
 echo ""
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" -eq 0 ]

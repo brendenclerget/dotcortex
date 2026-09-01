@@ -279,25 +279,25 @@ Based on selection, add the appropriate rules to CLAUDE.md:
 - Option 3: "After completing a task, stage, commit, and push to the current branch. Don't open PRs."
 - Option 4: "After completing a task, stage, commit, push, and open a draft PR."
 
-**Q11: Team sync** (single select, only if Q8 = same repo or separate repo)
-- Question: "How should task state sync across collaborators?"
-- Header: "Team sync"
+**Q11: Task remote** (single select, only if Q8 = same repo or separate repo)
+- Question: "Does task state sync with a remote (teammates or a second machine)?"
+- Header: "Task remote"
 - Options:
-  - "Solo — no sync needed, I'm the only one"
-  - "Manual — sync only when I run /pm sync"
-  - "Auto on mutation — push after creates/updates, pull before reads"
-  - "Session bookends — pull at session start, push at session end"
+  - "Solo, local only — no remote sync"
+  - "Remote-synced — a shared task repo other sessions/people also write to"
 
-Based on selection, configure the pm-agent skill's sync behavior:
-- **Solo:** No sync logic added.
-- **Manual:** Add `/pm sync` command. No auto-sync.
-- **Auto on mutation:** Add sync rules to pm-agent skill:
-  - Before `/backlog`, `/next`, `/standup`, `/pm status`: pull latest task state
-  - After `/pm new`, `/pm done`, ticket-new, ticket-breakdown: push task changes
-  - On conflict: show both versions, let user resolve
-- **Session bookends:** Add to CLAUDE.md:
-  - "At the start of each session, pull latest task state before doing anything."
-  - "Before ending a session, push all task file changes."
+There is exactly ONE sync contract when a remote exists (no modes): **every task mutation is an immediate scoped commit + push** — pull before reads, `git add <exact touched paths>` (never `-A`), commit, push, retry once on rejection. Session bookends and per-mode behavior do not exist; the pm-agent skill's Team Sync section documents the contract. Solo installs skip sync logic entirely.
+
+**Q11b: Workflow policy** (only when CREATING a fresh setup — when connecting to an existing team context, INHERIT the team's policy and skip this interview entirely)
+- Question: "Who runs what? (These render into CLAUDE.md's workflow rules.)"
+- Collect single-select values for: `test_authoring` (allowed/ask), `test_execution` (allowed/ask/user_only), `server_lifecycle` (allowed/ask/user_only), `endpoint_probing` (allowed/ask/user_only), `documentation_creation` (allowed/ask), `ticket_creation` (proactive/followups_only/explicit_only), `ticket_close` (auto/ask)
+- Defaults (non-interactive): allowed / allowed / ask / allowed / ask / followups_only / ask
+- Store under `config.workflow_policy` (validated by `schemas/config.schema.json`); the CLAUDE.md `WORKFLOW_POLICY` marker block renders from these values — never hand-edited.
+
+**Q11c: Linear** (only if Q5 = full PM)
+- Question: "Attach tickets to Linear issues via the Linear MCP?"
+- Options: "Yes — Linear is our tracker" / "No — markdown only"
+- If yes: set `config.linear.enabled = true`. Commands use the Linear MCP when it's connected in a session, prompt the user to connect it when enabled-but-absent, and skip silently when disabled. No further Linear setup happens at init.
 
 **Q12: Guardrails** (free text)
 - Question: "Anything else Claude should never do? (e.g., 'never modify the auth module', 'always use TypeScript strict mode')"
@@ -442,32 +442,21 @@ Task paths are fixed in v1.5:
 - Canonical: `.dotcortex/tasks/`
 - Compatibility view: `.tasks/ -> .dotcortex/tasks/`
 
-Create all of these, replacing `PREFIX` with the chosen prefix from Q6 and `TASKS_DIR` with `.dotcortex/tasks`:
+**Base assets are NOT copied by the model.** They render through the deterministic pipeline:
 
+1. Write `.dotcortex/config.json` first (Phase 4.9's schema — the renderer reads token values from it).
+2. Assemble a staging tree from the selected profiles: for each enabled profile in `base/profiles.json` (`core` always; `pm` if Q5 = full PM; `review`/packs per interview), copy that profile's subtrees from the dotcortex checkout's `base/` into one temp staging dir, merging their `commands/`, `skills/`, `templates/` subdirectories. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
+3. Render: `bin/render.sh --source <staging> --dest .dotcortex/layers/org --strict --config .dotcortex/config.json`. Strict mode means an unresolved `{{TOKEN}}` aborts with nothing written — fix the config, re-run. The renderer records every file in `managed_files` (sha256 + base_version + source).
+4. Resolve views: `bin/rebuild-views.sh --root <project-root>` (Phase 4.6).
+
+Task-state scaffolding (data, not behavior — created directly):
 - `.dotcortex/tasks/.ticket_counter` — Contains "1"
-- `.dotcortex/tasks/BACKLOG.md` — Empty scaffold with section headers
+- `.dotcortex/tasks/BACKLOG.md` — Empty scaffold with section headers (below)
+- `.dotcortex/tasks/TODO.md` — Empty ordered-queue scaffold (`# TODO` + empty table)
 - `.dotcortex/tasks/archive/` — Empty directory (create with `.gitkeep`)
-- `.dotcortex/tasks/templates/simple-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `.dotcortex/tasks/templates/parent-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `.dotcortex/tasks/templates/child-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `.dotcortex/tasks/templates/followup-ticket-template.md` — Copy from dotcortex templates, replace PREFIX
-- `.dotcortex/skills/pm-agent/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/skills/backlog-cleanup/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/skills/feature-planning/SKILL.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/pm.md` — Copy from dotcortex, replace PREFIX
-- `.dotcortex/commands/ticket-new.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/ticket-breakdown.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/ticket-refine.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/ticket-close.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/next.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/backlog.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/standup.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR
-- `.dotcortex/commands/pm-sync.md` — Copy from dotcortex, replace PREFIX and TASKS_DIR (only if Q11 != solo)
-- `.dotcortex/commands/cortex.md` — Copy from dotcortex
-- `.dotcortex/commands/cortex-sync.md` — Copy from dotcortex
-- `.dotcortex/commands/org.md` — Copy from dotcortex (if Q5a = org_connected)
-- `.dotcortex/commands/cortex-push.md` — Copy from dotcortex (if Q5a = org_connected)
 - `.tasks` symlink to `.dotcortex/tasks/` (or copy fallback if symlinks are disabled)
+
+Note: ticket templates are behavior, not task data — they render into the org layer and resolve at `.dotcortex/templates/`; commands reference them there.
 
 **BACKLOG.md scaffold:**
 ```markdown
@@ -493,16 +482,17 @@ _Ideas and future considerations._
 
 ### 4.6: Rebuild Tool Views From Canonical Structure
 
-After writing canonical files, rebuild tool views:
+Layer resolution and tool views have exactly one engine:
 
-1. `.claude/commands`, `.claude/skills`, `.claude/knowledge`, `.claude/memory` from:
-   - `.dotcortex/org/*` (org-global, if connected)
-   - `.dotcortex/org/projects/<project_key>/*` (org project overlay, if connected)
-   - `.dotcortex/*` (local canonical)
-2. Preserve `.claude/settings.local.json` (real file, never symlink over it)
-3. Use collision order for shared files: org-global first, org-project second, local third (local wins)
-4. Ensure `.tasks -> .dotcortex/tasks/`
-5. If symlink mode is disabled (`Q5b = copy views`), copy instead of symlink and warn that views can drift
+```bash
+bin/rebuild-views.sh --root <project-root>
+```
+
+It resolves `.dotcortex/layers/org` → `.dotcortex/layers/team` (team wins; overrides reported) into `.dotcortex/{commands,skills,knowledge,templates,memory}` and points `.claude/*` and `.agents/skills` at the resolved dirs. Do not re-implement any of that here. Afterwards:
+
+1. Preserve `.claude/settings.local.json` (real file, never symlink over it)
+2. Ensure `.tasks -> .dotcortex/tasks/`
+3. If symlink mode is disabled (`Q5b = copy views`), copy instead of symlink and warn that views can drift
 
 ### 4.7: .gitignore rules
 
@@ -643,7 +633,7 @@ If Q13 selected "create new org context repo", scaffold:
 - `projects/<project_key>/commands/`
 - `projects/<project_key>/tasks/`
 
-**Computing checksums:** After writing each managed file (with PREFIX/TASKS_DIR replaced), compute its SHA-256 hash and store it. This is how `/cortex-update` detects user modifications later.
+**Checksums are the renderer's job, not yours:** `bin/render.sh` records every rendered file's SHA-256, base_version, and repository-relative source into `managed_files` as part of Phase 4.5. Never compute or write manifest entries by hand — if `managed_files` is empty after init, the render step was skipped and must be re-run.
 
 **What counts as managed:**
 - All files from `commands/` (pm.md, ticket-*.md, next.md, backlog.md, standup.md, dotcortex-init.md, dotcortex-update.md)
