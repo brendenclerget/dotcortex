@@ -103,7 +103,7 @@ write_install_metadata() {
   "last_migrated_at": "$now_utc",
   "updated_on": "$now_date",
   "install_mode": "$INSTALL_MODE",
-  "source_checkout": "$(printf '%s' "$DOTCORTEX_DIR" | sed 's/\\/\\\\/g; s/"/\\"/g')",
+  "source_checkout": $(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$DOTCORTEX_DIR"),
   "migration_state_dir": ".dotcortex/.migrations"
 }
 EOF

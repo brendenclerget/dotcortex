@@ -10,7 +10,7 @@
     "updated_at": { "type": "string" },
     "config": {
       "type": "object",
-      "required": ["prefix", "tasks_dir"],
+      "required": ["prefix", "tasks_dir", "profiles", "workflow_policy", "linear"],
       "properties": {
         "prefix": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}$" },
         "tasks_dir": { "type": "string", "minLength": 1 },

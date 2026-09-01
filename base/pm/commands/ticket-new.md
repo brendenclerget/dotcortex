@@ -151,9 +151,9 @@ until [ $attempt -ge 5 ]; do
   # 5. Push rejected: roll back ONLY this transaction's own artifacts (never a
   #    tree-wide reset — other sessions' dirty files must survive), then retry
   git -C {{TASKS_DIR}} reset --soft HEAD~1
-  git -C {{TASKS_DIR}} restore --staged .ticket_counter "$TICKET_FILE" BACKLOG.md
+  git -C {{TASKS_DIR}} restore --staged .ticket_counter "$TICKET_FILE" "$TICKET/" BACKLOG.md
   git -C {{TASKS_DIR}} checkout -- .ticket_counter BACKLOG.md   # our edits only; regenerated next attempt
-  rm -rf "{{TASKS_DIR}}/$TICKET_FILE" "{{TASKS_DIR}}/$TICKET"/  # the files WE just created
+  rm -rf "{{TASKS_DIR}}/$TICKET_FILE" "{{TASKS_DIR}}/$TICKET"/  # the files WE just created (file OR family folder)
 done
 ```
 

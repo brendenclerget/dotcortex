@@ -65,7 +65,11 @@ close commit is authoritative and a failed knowledge write must never block or r
 
 **Destination mechanics:** `.dotcortex/knowledge/` is a GENERATED resolved view
 (per-file symlinks) — never create files directly in it. Writes go to the layer:
-- **Existing file:** edit through the resolved path (the symlink writes through to the layer file).
+- **Existing file:** check WHICH layer the resolved symlink points to first
+  (`readlink .dotcortex/knowledge/<file>`). If it resolves to `layers/team/`, edit
+  through it. If it resolves to `layers/org/` (no team override yet), do NOT write
+  through it — copy the file to `.dotcortex/layers/team/knowledge/<file>`, append the
+  entry there, and rebuild views (the team copy now overrides org and carries the rollup).
 - **New file:** create it in `.dotcortex/layers/team/knowledge/` (the team/local layer —
   create the directory if this is the first entry), then run
   `.dotcortex/bin/rebuild-views.sh --root .` so the view republishes it.
@@ -175,7 +179,9 @@ commit the close (ticket move + tracking-file updates) and push — one scoped
 transaction for the whole close:
 
 ```bash
-cd {{TASKS_DIR}} && git add <only-the-files-this-close-touched> && git commit && git push
+git -C {{TASKS_DIR}} add <only-the-files-this-close-touched>
+git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: close"
+git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TASKS_DIR}} push; }
 ```
 
 Stage ONLY the files this close touched — parallel sessions leave unrelated

@@ -632,15 +632,7 @@ The file must be **valid JSON** (no comments) and validate against `schemas/conf
 
 Fill from the interview: `prefix` (Q6), `project_name` + `component_repos` (Phase 1 scan), `profiles` (Q5/Q17/pack questions — include `review` only if Q17 configured it), `task_storage`/`task_remote` (Q8/Q11), `workflow_policy` (Q15, or inherited from team context), `linear.enabled` (Q16), `tools` (Q2). `managed_files` starts empty — the Phase 4.5 render fills it. Machine-local review values (Q17) go in gitignored `.dotcortex/config.local.json` with the same `{"config": {"review": {...}}}` shape.
 
-If Q13 connected an org repo, set:
-
-```json
-"org": {
-  "repo": "acme-corp/acme-cortex",
-  "project_key": "payments-api",
-  "push_enabled": true
-}
-```
+If Q13 connected an existing team context repo, record it as `context_repo: {url, checkout_path: ".dotcortex/layers/team", branch, team_key}` — the legacy `org` block (with `project_key`) no longer exists.
 
 If Q13 selected "create new team context repo", scaffold the TEAM layer (two-layer topology — org-base comes from the dotcortex repo itself; there is NO per-project context tree):
 - `commands/`

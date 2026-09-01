@@ -361,6 +361,7 @@ cat > "$WORK/t5/config.json" <<'EOF'
  "config": {
    "prefix": "APP", "tasks_dir": ".dotcortex/tasks", "project_name": "ExampleProject",
    "component_repos": ["api", "app", "web"],
+   "profiles": ["core", "pm", "review", "testing", "design"],
    "review": {"reviewer_cli": "reviewer-cli", "reviewer_model": "reviewer-model",
               "coordinator_cli": "coordinator-cli", "coordinator_model": "coordinator-model"},
    "workflow_policy": {"test_authoring": "allowed", "test_execution": "user_only",
