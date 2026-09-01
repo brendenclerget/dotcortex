@@ -103,6 +103,7 @@ write_install_metadata() {
   "last_migrated_at": "$now_utc",
   "updated_on": "$now_date",
   "install_mode": "$INSTALL_MODE",
+  "source_checkout": "$DOTCORTEX_DIR",
   "migration_state_dir": ".dotcortex/.migrations"
 }
 EOF
@@ -227,12 +228,32 @@ mkdir -p "$TARGET_DIR/.dotcortex/.migrations"
 
 run_migrations
 
-# Ensure canonical/bootstrap paths exist after migration checks.
-mkdir -p "$TARGET_DIR/.dotcortex/commands"
+# Install the deterministic engine + schema into the project so rendered
+# projects never depend on finding the source checkout for these.
+mkdir -p "$TARGET_DIR/.dotcortex/bin" "$TARGET_DIR/.dotcortex/schemas"
+cp "$DOTCORTEX_DIR/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/render.sh"
+cp "$DOTCORTEX_DIR/bin/rebuild-views.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh"
+cp "$DOTCORTEX_DIR/schemas/config.schema.json" "$TARGET_DIR/.dotcortex/schemas/config.schema.json"
+chmod +x "$TARGET_DIR/.dotcortex/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh"
 
-# Copy bootstrap commands to canonical location
-cp "$DOTCORTEX_DIR/commands/cortex-init.md" "$TARGET_DIR/.dotcortex/commands/cortex-init.md"
-cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$TARGET_DIR/.dotcortex/commands/cortex-update.md"
+# Bootstrap commands: BEFORE init, .dotcortex/commands is a plain dir — install
+# there. AFTER init, .dotcortex/commands is a generated resolved view and the
+# org layer is the canonical home — install there instead (the view links it).
+if [ -d "$TARGET_DIR/.dotcortex/layers/org/commands" ]; then
+  BOOTSTRAP_DEST="$TARGET_DIR/.dotcortex/layers/org/commands"
+  echo "Layers:    detected — bootstrap commands go to layers/org/commands."
+else
+  BOOTSTRAP_DEST="$TARGET_DIR/.dotcortex/commands"
+  mkdir -p "$BOOTSTRAP_DEST"
+fi
+cp "$DOTCORTEX_DIR/commands/cortex-init.md" "$BOOTSTRAP_DEST/cortex-init.md"
+cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$BOOTSTRAP_DEST/cortex-update.md"
+
+# When installing into the org layer, re-resolve views so the (possibly new)
+# bootstrap files appear in .dotcortex/commands and the tool views.
+if [ -d "$TARGET_DIR/.dotcortex/layers/org/commands" ]; then
+  "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh" --root "$TARGET_DIR"
+fi
 
 # Rebuild minimal symlink view for bootstrap commands.
 #

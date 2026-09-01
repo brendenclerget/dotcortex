@@ -17,18 +17,13 @@ Avoid auto-invoking on generic words like "task" alone.
 
 ## Using Templates
 
-Templates are in `{{TASKS_DIR}}/templates/`:
+Templates are in `.dotcortex/templates/` (rendered behavior, resolved from the context layers — NOT stored in the task repo):
 - `simple-ticket-template.md` - Use for quick tasks
 - `parent-ticket-template.md` - Use for features
 - `child-ticket-template.md` - Use for subtasks
 - `followup-ticket-template.md` - Use for follow-ups discovered during work
 
-**When creating tickets:**
-1. Read `.ticket_counter` to get next number: `cat {{TASKS_DIR}}/.ticket_counter`
-2. Read appropriate template: `cat {{TASKS_DIR}}/templates/[template].md`
-3. Create ticket file with counter number (e.g., {{TICKET_PREFIX}}-055-name.md)
-4. Increment counter immediately
-5. Fill in all sections appropriately
+**When creating tickets:** top-level ID allocation happens ONLY inside `/ticket-new`'s transaction (pull → allocate → create → push, Linear-first when available). Never read or increment `.ticket_counter` outside that flow. Letter children (`XXXa/b/c`) consume no numbers and need no transaction beyond their own scoped commit.
 
 Don't skip sections - having consistent structure helps tracking.
 
@@ -85,8 +80,8 @@ Start prompts are implementation kickoff instructions for a coding agent or futu
 ├── {{TICKET_PREFIX}}-XXX-name.md               # Simple ticket (no subtasks)
 ├── {{TICKET_PREFIX}}-YYY/                      # Feature folder (parent + subtasks together)
 │   ├── {{TICKET_PREFIX}}-YYY-feature.md        # Parent ticket (lives INSIDE its folder)
-│   ├── {{TICKET_PREFIX}}-ZZZ-subtask.md
-│   └── {{TICKET_PREFIX}}-AAA-subtask.md
+│   ├── {{TICKET_PREFIX}}-YYYa-subtask.md       # Letter children — no counter numbers
+│   └── {{TICKET_PREFIX}}-YYYb-subtask.md
 └── archive/YYYY-MM/                             # Completed work
 ```
 
@@ -124,7 +119,9 @@ find {{TASKS_DIR}} -name "{{TICKET_PREFIX}}-XXX*" -not -path "*/archive/*"
 
 ## Autonomous Ticket Management
 
-**Mark DONE automatically when:**
+**Closing tickets honors `config.workflow_policy.ticket_close`:** `auto` → close without asking when the criteria below hold; `ask` → confirm with the user before running `/ticket-close`.
+
+**Criteria for closing (auto) or proposing closure (ask):**
 - Work completed this session
 - Tests pass, acceptance criteria met
 - User says "done" / "finished" / "working"
@@ -247,8 +244,7 @@ Follow-ups are tasks that emerge **during** work on an existing ticket — thing
 
 ## Counter Management
 
-**CRITICAL: ALWAYS read `.ticket_counter` before creating ANY ticket.**
-Never invent ticket numbers or use numbers from planning documents - they may be outdated.
+**CRITICAL: never invent ticket numbers or reuse numbers from planning documents.** Top-level IDs come only from `/ticket-new`'s allocation transaction (which reads the freshly pulled counter, or the Linear issue identifier when Linear is available). Never read, increment, or write `.ticket_counter` by hand. Letter children never touch the counter.
 
 ```bash
 # 1. Read next number FIRST

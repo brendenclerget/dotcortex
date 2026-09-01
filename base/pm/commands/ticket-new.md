@@ -30,48 +30,11 @@ but the MCP is not connected, pause and ask the user to connect it (continue
 markdown-only only at their explicit word). If Linear is not configured, skip this step
 silently and allocate a number from the counter as described next.
 
-**Pure-markdown mode — ticket creation is ONE retryable transaction.**
-Pull, create the file, update the counter, and push together. If the push is rejected,
-re-pull and retry with the new counter value (the ticket gets a new number). Never
-read the counter early and write it later — a gap between read and push hands two
+**Pure-markdown mode: allocation is DEFERRED.** Do not touch the counter now. Draft
+the complete ticket content first (Steps 2–5), using `XXX` as an ID placeholder; the
+allocation transaction in Step 5b turns the draft into a numbered file. Never read
+the counter early and write it later — a gap between read and push hands two
 sessions the same number.
-
-```bash
-# --- One transaction: pull -> create -> counter update -> push ---
-attempt=0
-until [ $attempt -ge 5 ]; do
-  attempt=$((attempt + 1))
-
-  # 1. Pull (always start from remote truth)
-  git -C {{TASKS_DIR}} pull --rebase
-
-  # 2. Allocate the number from the freshly pulled counter
-  NEXT=$(cat {{TASKS_DIR}}/.ticket_counter)
-  if ls {{TASKS_DIR}}/{{TICKET_PREFIX}}-$(printf "%03d" $NEXT)-* >/dev/null 2>&1; then
-    HIGHEST=$(ls {{TASKS_DIR}}/{{TICKET_PREFIX}}-*.md | grep -o '{{TICKET_PREFIX}}-[0-9]\+' | sed 's/{{TICKET_PREFIX}}-//' | sort -n | tail -1)
-    NEXT=$((HIGHEST + 1))
-  fi
-  TICKET={{TICKET_PREFIX}}-$(printf "%03d" $NEXT)
-
-  # 3. Create the ticket file (steps 2-5 below produce its contents)
-  #    ... write {{TASKS_DIR}}/$TICKET-<slug>.md ...
-
-  # 4. Update the counter — parent number only; letter subtasks consume no numbers
-  echo $((NEXT + 1)) > {{TASKS_DIR}}/.ticket_counter
-
-  # 5. Commit the exact paths (never `git add -A`) and push
-  git -C {{TASKS_DIR}} add .ticket_counter $TICKET-*.md BACKLOG.md
-  git -C {{TASKS_DIR}} commit -m "$TICKET: create ticket"
-  if git -C {{TASKS_DIR}} push; then
-    echo "Created $TICKET"
-    break
-  fi
-
-  # Push rejected: someone else took this number. Reset and retry from the pull.
-  git -C {{TASKS_DIR}} reset --soft HEAD~1
-  git -C {{TASKS_DIR}} restore --staged .
-done
-```
 
 **Create parent ticket:**
 - Use the identifier established above (Linear identifier, or the transactionally
@@ -121,6 +84,8 @@ cat .dotcortex/templates/parent-ticket-template.md
 - Testing plan
 - Subtasks section (to be filled in step 5)
 
+Draft the full content in memory/scratch — the file lands inside the Step 5b transaction with its real ID.
+
 ## Step 5: Break into subtasks
 
 Ask: "Should I break this into subtasks?"
@@ -156,18 +121,46 @@ Ask: "Should I break this into subtasks?"
 - "Create listing card component with image/price display"
 - "Implement search/filter logic with query params"
 
-## Step 6: Land the subtasks and the subtask list
+## Step 5b: The allocation transaction (pure-markdown mode)
 
-The counter was already advanced inside the Step 1 transaction (parent number only —
-subtasks use letter suffixes, not new numbers). Commit and push the subtask files and
-the updated parent as one scoped transaction of their own:
+With the full draft ready (parent + any letter-child drafts + the BACKLOG row), run
+ONE transaction that allocates the ID and lands everything:
 
 ```bash
-git -C {{TASKS_DIR}} pull --rebase
-git -C {{TASKS_DIR}} add {{TICKET_PREFIX}}-XXX/ BACKLOG.md
-git -C {{TASKS_DIR}} commit -m "{{TICKET_PREFIX}}-XXX: add subtasks"
-git -C {{TASKS_DIR}} push   # on rejection: re-pull, re-apply, push again
+attempt=0
+until [ $attempt -ge 5 ]; do
+  attempt=$((attempt + 1))
+
+  # 1. Pull (always start from remote truth)
+  git -C {{TASKS_DIR}} pull --rebase
+
+  # 2. Allocate from the freshly pulled counter (sanity-check against existing files)
+  NEXT=$(cat {{TASKS_DIR}}/.ticket_counter)
+  HIGHEST=$(ls {{TASKS_DIR}}/{{TICKET_PREFIX}}-*.md {{TASKS_DIR}}/{{TICKET_PREFIX}}-*/ 2>/dev/null | grep -o '{{TICKET_PREFIX}}-[0-9]*' | sed 's/{{TICKET_PREFIX}}-//' | sort -n | tail -1)
+  [ -n "$HIGHEST" ] && [ "$HIGHEST" -ge "$NEXT" ] && NEXT=$((HIGHEST + 1))
+  TICKET="{{TICKET_PREFIX}}-$(printf '%03d' "$NEXT")"
+  TICKET_FILE="$TICKET-<slug>.md"          # exact filename — no globs anywhere below
+
+  # 3. Write the drafted content under the real ID (file or family folder),
+  #    update the counter, add the BACKLOG row
+  #    ... write {{TASKS_DIR}}/$TICKET_FILE (and $TICKET/ children if any) ...
+  echo $((NEXT + 1)) > {{TASKS_DIR}}/.ticket_counter
+
+  # 4. Stage EXACT paths (tasks-dir-relative — never a glob, never -A), commit, push
+  git -C {{TASKS_DIR}} add .ticket_counter "$TICKET_FILE" BACKLOG.md   # or "$TICKET/" for a family folder
+  git -C {{TASKS_DIR}} commit -m "$TICKET: create ticket"
+  git -C {{TASKS_DIR}} push && { echo "Created $TICKET"; break; }
+
+  # 5. Push rejected: roll back COMPLETELY (commit + working tree) so the next
+  #    pull starts clean, then retry with a fresh allocation
+  git -C {{TASKS_DIR}} reset --hard HEAD~1     # discards only this transaction's own commit
+done
 ```
+
+Letter subtasks created here ride inside the same transaction (same family folder,
+same commit) — they consume no counter numbers and never get their own transaction.
+In Linear mode the ID came from Linear in Step 1; the same transaction applies minus
+the counter lines.
 
 **Update parent ticket with subtask list:**
 ```markdown

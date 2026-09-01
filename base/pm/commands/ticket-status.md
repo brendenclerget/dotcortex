@@ -39,6 +39,10 @@ Handle both layouts:
 
 If not found in active tasks, check `{{TASKS_DIR}}/archive/`. If transitioning back from archive, move it out before editing — closed tickets shouldn't be edited in place.
 
+## Step 2b: Pull first
+
+Before editing anything: `git -C {{TASKS_DIR}} pull --rebase` — always start from remote truth; another session may have already moved this ticket.
+
 ## Step 3: Update ticket fields
 
 Open the ticket file and update:
@@ -66,6 +70,12 @@ git add "$TICKET_FILE" "{{TASKS_DIR}}/BACKLOG.md"
 git commit -m "chore: set $TICKET_ID to $STATUS"
 git push || { git pull --rebase && git push; }
 ```
+
+## Step 6b: Linear (after the commit)
+
+> **Linear:** If the Linear MCP is available in this session, mirror this status change to the ticket's linked issue (status, and assignment on claim). If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
+
+A failed issue update leaves a visible pending-sync note in the ticket; the markdown commit stands.
 
 ## Step 7: Report
 

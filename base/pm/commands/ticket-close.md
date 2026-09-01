@@ -29,11 +29,10 @@ Read the ticket file and update these fields in place:
 - `Updated:` → today's date (YYYY-MM-DD)
 - Add `Completed: YYYY-MM-DD` if not already present
 
-> **Linear:** If the Linear MCP is available in this session, set the ticket's linked issue to Done (and clear the in-progress assignment if the team's convention calls for it). If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
-
-The markdown close is authoritative and lands first (Step 8) — the Linear update follows it.
-If the issue update fails, leave a visible pending-sync note in the ticket and continue; a
-failed follow-up never undoes or duplicates an already-valid close.
+**Ordering:** this step edits the ticket file only. The task-repo commit (Step 8) is the
+authoritative close and lands FIRST; knowledge capture applies after it (Step 4 drafts,
+Step 8 applies), and the Linear update runs LAST (Step 8b). Nothing external happens
+before the close commit.
 
 If this is a parent ticket with subtasks, verify all subtasks are marked done. If any are still open, report which ones and stop — do not close a parent with open subtasks. **Exception:** if the user explicitly directs closing anyway, proceed but (a) note the exception + the open children in the ticket's Status/Log lines, and (b) keep each open child as a live standalone file in the active tasks dir and surface it in BACKLOG.md's "Orphaned Subtasks" section so it stays tracked.
 
@@ -56,6 +55,9 @@ Read the ticket's Technical Notes, Lessons Learned, and work done sections. Deci
 ### 4a. Durable knowledge → the knowledge layer
 
 Documentation that outlives the ticket and is readable by anyone working in this context.
+
+**Draft the entries now; APPLY them only after Step 8's task-repo push succeeds** — the
+close commit is authoritative and a failed knowledge write must never block or reorder it.
 
 **Destination:** `.dotcortex/knowledge/`. When a team context is connected, that resolved
 path is backed by the **team layer** — learnings roll up so future agents inherit them
@@ -172,9 +174,17 @@ Stage ONLY the files this close touched — parallel sessions leave unrelated
 dirty files in this repo; never `git add -A` blindly, and never commit files
 you didn't change. On push rejection, `git pull --rebase` and retry once.
 
-This commit is the authoritative close. Knowledge capture (Step 4) and the
-Linear update (Step 2) are follow-ups to it; if one is still pending, say so in
+This commit is the authoritative close. Once it has pushed, apply the drafted
+knowledge entries (Step 4a — team-layer capture transaction or plain project
+file edit), then proceed to Step 8b. If a follow-up is still pending, say so in
 the report rather than reopening the close.
+
+## Step 8b: Linear (last, after the authoritative commit)
+
+> **Linear:** If the Linear MCP is available in this session, set the ticket's linked issue to Done. If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
+
+If the issue update fails, leave a visible pending-sync note in the ticket and continue;
+a failed follow-up never undoes or duplicates an already-valid close.
 
 ## Step 9: Report
 
@@ -196,7 +206,7 @@ Include:
 ---
 
 **Remember:**
-- Do not ask permission — just execute the workflow
+- Honor `config.workflow_policy.ticket_close`: `auto` → execute the workflow without asking; `ask` → confirm with the user before Step 2, then execute without further pauses
 - Do not start servers or run tests
 - If anything looks wrong (missing ticket, open subtasks), report and stop rather than guessing
 

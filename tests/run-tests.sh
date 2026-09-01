@@ -386,6 +386,60 @@ assert "base source tree passes de-brand scan" bash "$REPO/scripts/check-debrand
 MCOUNT=$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["managed_files"]))' "$WORK/t5/config.json")
 [ "$MCOUNT" -ge 25 ] && ok "manifest covers the full payload ($MCOUNT files)" || fail "manifest covers the full payload (got $MCOUNT)"
 
+# ---------- T6: install -> init-pipeline -> render -> rebuild, end to end ----------
+echo "T6: full install/init/render/rebuild integration"
+PROJ="$WORK/t6"; mkdir -p "$PROJ"
+bash "$REPO/install.sh" --yes "$PROJ" >/dev/null 2>&1 || fail "T6 install runs"
+assert "engine installed into project" test -x "$PROJ/.dotcortex/bin/render.sh"
+assert "schema installed into project" test -f "$PROJ/.dotcortex/schemas/config.schema.json"
+SRCCHK="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["source_checkout"])' "$PROJ/.dotcortex/install-info.json")"
+[ "$SRCCHK" = "$REPO" ] && ok "install-info records source_checkout" || fail "install-info records source_checkout"
+
+# Simulate cortex-init Phase 4.5: config, staging with .sources.json, bootstrap migration
+cp "$WORK/t5/config.json" "$PROJ/.dotcortex/config.json"
+ISTAGE="$PROJ/.staging"; mkdir -p "$ISTAGE"
+python3 - "$REPO/base" "$ISTAGE" <<'EOF'
+import json, os, shutil, sys
+base, stage = sys.argv[1], sys.argv[2]
+srcmap = {}
+for prof in ["core", "pm", "review", "packs/testing", "packs/design"]:
+    for sub in ["commands", "skills", "templates"]:
+        root = os.path.join(base, prof, sub)
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, files in os.walk(root):
+            for f in files:
+                src = os.path.join(dirpath, f)
+                rel = os.path.join(sub, os.path.relpath(src, root))
+                dst = os.path.join(stage, rel)
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                shutil.copy2(src, dst)
+                srcmap[rel] = os.path.relpath(src, os.path.dirname(base))
+json.dump(srcmap, open(os.path.join(stage, ".sources.json"), "w"), indent=1)
+EOF
+mkdir -p "$PROJ/.dotcortex/layers/org/commands"
+mv "$PROJ/.dotcortex/commands/cortex-init.md" "$PROJ/.dotcortex/commands/cortex-update.md" "$PROJ/.dotcortex/layers/org/commands/"
+rmdir "$PROJ/.dotcortex/commands"
+INSTVER="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dotcortex_version"])' "$PROJ/.dotcortex/install-info.json")"
+bash "$PROJ/.dotcortex/bin/render.sh" --source "$ISTAGE" --dest "$PROJ/.dotcortex/layers/org" \
+  --config "$PROJ/.dotcortex/config.json" --base-version "$INSTVER" --strict >/dev/null 2>"$WORK/t6-render-err.txt" \
+  && ok "T6 strict render into org layer succeeds" || { fail "T6 strict render into org layer succeeds"; head -3 "$WORK/t6-render-err.txt" | sed 's/^/    /'; }
+bash "$PROJ/.dotcortex/bin/rebuild-views.sh" --root "$PROJ" >/dev/null 2>&1 \
+  && ok "T6 rebuild-views succeeds over rendered layer + bootstrap" || fail "T6 rebuild-views succeeds over rendered layer + bootstrap"
+assert "resolved view exposes bootstrap command" grep -q 'cortex-init' "$PROJ/.dotcortex/commands/cortex-init.md"
+assert "resolved view exposes rendered PM command" grep -q 'APP' "$PROJ/.dotcortex/commands/ticket-new.md"
+assert ".claude view resolves rendered content" grep -q 'APP' "$PROJ/.claude/commands/ticket-new.md"
+T6SRC="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["managed_files"]["commands/ticket-new.md"]["source"])' "$PROJ/.dotcortex/config.json")"
+[ "$T6SRC" = "base/pm/commands/ticket-new.md" ] && ok "manifest source is git-retrievable (base/...)" || fail "manifest source is git-retrievable (got: $T6SRC)"
+T6VER="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["managed_files"]["commands/ticket-new.md"]["base_version"])' "$PROJ/.dotcortex/config.json")"
+[ "$T6VER" = "$INSTVER" ] && ok "manifest base_version matches installed version" || fail "manifest base_version matches installed version"
+
+# Re-run install AFTER init: bootstrap goes to the layer, rebuild keeps views coherent
+bash "$REPO/install.sh" --yes "$PROJ" >/dev/null 2>&1 \
+  && ok "post-init install re-run succeeds" || fail "post-init install re-run succeeds"
+assert "bootstrap landed in org layer on re-run" test -f "$PROJ/.dotcortex/layers/org/commands/cortex-init.md"
+assert "views still resolve after post-init re-run" grep -q 'cortex-init' "$PROJ/.dotcortex/commands/cortex-init.md"
+
 echo ""
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" -eq 0 ]

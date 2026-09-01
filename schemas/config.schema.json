@@ -39,7 +39,8 @@
         },
         "workflow_policy": {
           "type": "object",
-          "description": "Team-scoped behavior policy. Inherited from the team context when connected; interviewed only at team creation. Values are single resolved tokens.",
+          "description": "Team-scoped behavior policy. Inherited from the team context when connected; interviewed only at team creation. Values are single resolved tokens. All seven fields required — init always writes a complete policy.",
+          "required": ["test_authoring", "test_execution", "server_lifecycle", "endpoint_probing", "documentation_creation", "ticket_creation", "ticket_close"],
           "properties": {
             "test_authoring": { "enum": ["allowed", "ask"] },
             "test_execution": { "enum": ["allowed", "ask", "user_only"] },
@@ -53,19 +54,24 @@
         },
         "review": {
           "type": "object",
-          "description": "Cross-model review executables. Team policy decides WHETHER review runs; these values live in gitignored user config (CLI paths/models are per-machine).",
+          "description": "Cross-model review executables. Team policy decides WHETHER review runs; these values live in gitignored .dotcortex/config.local.json (CLI paths/models are per-machine — the renderer overlays that file). All four required when present.",
+          "required": ["reviewer_cli", "reviewer_model", "coordinator_cli", "coordinator_model"],
           "properties": {
-            "reviewer_cli": { "type": "string" },
-            "reviewer_model": { "type": "string" },
-            "coordinator_cli": { "type": "string" },
-            "coordinator_model": { "type": "string" }
+            "reviewer_cli": { "type": "string", "minLength": 1 },
+            "reviewer_model": { "type": "string", "minLength": 1 },
+            "coordinator_cli": { "type": "string", "minLength": 1 },
+            "coordinator_model": { "type": "string", "minLength": 1 }
           }
         },
         "linear": {
           "type": "object",
+          "required": ["enabled"],
           "properties": { "enabled": { "type": "boolean" } }
         },
-        "git_autonomy": { "enum": ["manual", "commit", "commit_push", "full"] }
+        "task_remote": { "type": "boolean" },
+        "task_storage": { "enum": ["same_repo", "gitignored", "separate_repo"] },
+        "symlinks": { "type": "boolean" },
+        "git_autonomy": { "enum": ["manual", "commit", "commit_push", "commit_push_pr"] }
       }
     },
     "managed_files": {

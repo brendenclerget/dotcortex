@@ -288,7 +288,7 @@ Based on selection, add the appropriate rules to CLAUDE.md:
 
 There is exactly ONE sync contract when a remote exists (no modes): **every task mutation is an immediate scoped commit + push** — pull before reads, `git add <exact touched paths>` (never `-A`), commit, push, retry once on rejection. Session bookends and per-mode behavior do not exist; the pm-agent skill's Team Sync section documents the contract. Solo installs skip sync logic entirely.
 
-**Q11b: Workflow policy** (only when CREATING a fresh setup — when connecting to an existing team context, INHERIT the team's policy and skip this interview entirely)
+**Q11b: Workflow policy** (ordering: resolve Q13/team-context connection FIRST — when connecting to an existing team context, INHERIT the team's policy and skip this interview entirely; ask only when creating a fresh/standalone setup)
 - Question: "Who runs what? (These render into CLAUDE.md's workflow rules.)"
 - Collect single-select values for: `test_authoring` (allowed/ask), `test_execution` (allowed/ask/user_only), `server_lifecycle` (allowed/ask/user_only), `endpoint_probing` (allowed/ask/user_only), `documentation_creation` (allowed/ask), `ticket_creation` (proactive/followups_only/explicit_only), `ticket_close` (auto/ask)
 - Defaults (non-interactive): allowed / allowed / ask / allowed / ask / followups_only / ask
@@ -298,6 +298,12 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 - Question: "Attach tickets to Linear issues via the Linear MCP?"
 - Options: "Yes — Linear is our tracker" / "No — markdown only"
 - If yes: set `config.linear.enabled = true`. Commands use the Linear MCP when it's connected in a session, prompt the user to connect it when enabled-but-absent, and skip silently when disabled. No further Linear setup happens at init.
+
+**Q11d: Cross-model review** (single select)
+- Question: "Enable the cross-model review profile (/fix, /implement-review)? Requires a second model family's CLI."
+- Options: "Yes — configure reviewer now" / "Skip — no review profile"
+- If yes: collect `review.reviewer_cli`, `review.reviewer_model`, `review.coordinator_cli`, `review.coordinator_model`. CLI paths/models are per-machine — write them to `.dotcortex/config.local.json` (gitignored; the renderer overlays it for token values) and leave `config.review` unset in the shared config.
+- If skipped: EXCLUDE the `review` profile from the Phase 4.5 staging (its files contain review tokens that would fail strict rendering).
 
 **Q12: Guardrails** (free text)
 - Question: "Anything else Claude should never do? (e.g., 'never modify the auth module', 'always use TypeScript strict mode')"
@@ -445,9 +451,11 @@ Task paths are fixed in v1.5:
 **Base assets are NOT copied by the model.** They render through the deterministic pipeline:
 
 1. Write `.dotcortex/config.json` first (Phase 4.9's schema — the renderer reads token values from it).
-2. Assemble a staging tree from the selected profiles: for each enabled profile in `base/profiles.json` (`core` always; `pm` if Q5 = full PM; `review`/packs per interview), copy that profile's subtrees from the dotcortex checkout's `base/` into one temp staging dir, merging their `commands/`, `skills/`, `templates/` subdirectories. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
-3. Render: `bin/render.sh --source <staging> --dest .dotcortex/layers/org --strict --config .dotcortex/config.json`. Strict mode means an unresolved `{{TOKEN}}` aborts with nothing written — fix the config, re-run. The renderer records every file in `managed_files` (sha256 + base_version + source).
-4. Resolve views: `bin/rebuild-views.sh --root <project-root>` (Phase 4.6).
+2. Locate the source checkout: `source_checkout` in `.dotcortex/install-info.json` (recorded by install.sh). If that path no longer exists, clone `config.source` and check out the exact tag recorded as `dotcortex_version` in install-info.
+3. Assemble a staging tree from the selected profiles: for each enabled profile in `<source_checkout>/base/profiles.json` (`core` always; `pm` if Q5 = full PM; `review` only if Q11d configured it; packs per interview), copy that profile's `commands/`, `skills/`, `templates/` subtrees from `base/` into one temp staging dir, and write `<staging>/.sources.json` mapping every staged-relative path to its repository-relative origin (e.g. `"commands/ticket-new.md": "base/pm/commands/ticket-new.md"`) — the renderer uses this for git-retrievable manifest sources. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
+4. **Migrate bootstrap commands into the layer** so the resolved view can own `.dotcortex/commands`: `mkdir -p .dotcortex/layers/org/commands && mv .dotcortex/commands/cortex-init.md .dotcortex/commands/cortex-update.md .dotcortex/layers/org/commands/` (then remove the now-empty `.dotcortex/commands` dir).
+5. Render: `.dotcortex/bin/render.sh --source <staging> --dest .dotcortex/layers/org --strict --config .dotcortex/config.json --base-version <dotcortex_version from install-info>`. Strict mode means an unresolved `{{TOKEN}}` aborts with nothing written — fix the config, re-run. The renderer records every file in `managed_files` (sha256 + base_version + repository-relative source).
+6. Resolve views: `.dotcortex/bin/rebuild-views.sh --root <project-root>` (Phase 4.6).
 
 Task-state scaffolding (data, not behavior — created directly):
 - `.dotcortex/tasks/.ticket_counter` — Contains "1"
@@ -485,7 +493,7 @@ _Ideas and future considerations._
 Layer resolution and tool views have exactly one engine:
 
 ```bash
-bin/rebuild-views.sh --root <project-root>
+.dotcortex/bin/rebuild-views.sh --root <project-root>
 ```
 
 It resolves `.dotcortex/layers/org` → `.dotcortex/layers/team` (team wins; overrides reported) into `.dotcortex/{commands,skills,knowledge,templates,memory}` and points `.claude/*` and `.agents/skills` at the resolved dirs. Do not re-implement any of that here. Afterwards:
@@ -552,7 +560,7 @@ ln -s ../../.dotcortex/skills/<skill-name> .gemini/skills/<skill-name>
 ```
 .cursor/rules/
 ├── pm-agent.mdc
-├── backlog-cleanup.mdc
+├── backlog-validation.mdc
 ├── feature-planning.mdc
 ├── thinking-modes.mdc
 └── [domain-skill].mdc
@@ -566,7 +574,7 @@ alwaysApply: false
 ---
 [skill SKILL.md body content]
 ```
-   - PM-related skills (`pm-agent`, `backlog-cleanup`, `feature-planning`): set `alwaysApply: false` (agent-requested based on description)
+   - PM-related skills (`pm-agent`, `backlog-validation`, `feature-planning`): set `alwaysApply: false` (agent-requested based on description)
    - Domain skills (e.g., `rails-backend`): set glob patterns based on relevant file extensions (e.g., `**/*.rb` for Rails, `**/*.tsx` for React)
    - `thinking-modes`: set `alwaysApply: true` (always relevant)
 
@@ -578,25 +586,35 @@ alwaysApply: false
 
 Generate `.dotcortex/config.json` to enable future updates via `/cortex-update`.
 
+The file must be **valid JSON** (no comments) and validate against `schemas/config.schema.json`. Every value below is a single resolved token from the interview — never the `a | b` alternatives notation. Note there is NO version field here (canonical version lives in `install-info.json.dotcortex_version`) and NO `team_sync` field (one sync contract, no modes — Q11 only decides whether a remote exists).
+
 ```json
 {
   "schema_version": 1,
-  "version": "2.0.0",
-  "dotcortex_version": "2.0.0",
   "source": "https://github.com/brendenclerget/dotcortex",
-  "installed_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "updated_at": "YYYY-MM-DDTHH:MM:SSZ",
-  "layout": "dotcortex",
+  "installed_at": "2026-01-01T00:00:00Z",
+  "updated_at": "2026-01-01T00:00:00Z",
   "config": {
-    "prefix": "[chosen prefix from Q6]",
+    "prefix": "APP",
     "tasks_dir": ".dotcortex/tasks",
-    "structure_mode": "single_project | org_connected",
+    "project_name": "ExampleProject",
+    "component_repos": ["api", "app"],
+    "profiles": ["core", "pm"],
     "symlinks": true,
-    "task_storage": "same_repo | gitignored | separate_repo",
-    "team_sync": "solo | manual | auto_mutation | session_bookends",
-    "git_autonomy": "manual | commit | commit_push | commit_push_pr",
-    "org": null,
-    "tools": ["claude", "codex", "gemini", "cursor"],
+    "task_storage": "separate_repo",
+    "task_remote": true,
+    "git_autonomy": "manual",
+    "tools": ["claude", "codex"],
+    "workflow_policy": {
+      "test_authoring": "allowed",
+      "test_execution": "user_only",
+      "server_lifecycle": "user_only",
+      "endpoint_probing": "ask",
+      "documentation_creation": "ask",
+      "ticket_creation": "followups_only",
+      "ticket_close": "ask"
+    },
+    "linear": { "enabled": false },
     "git_tracking": {
       "commands": true,
       "skills": true,
@@ -604,14 +622,11 @@ Generate `.dotcortex/config.json` to enable future updates via `/cortex-update`.
       "memory": true
     }
   },
-  "managed_files": {
-    // For each command, skill, and template file copied from dotcortex:
-    // "relative/path/to/file": "sha256-of-rendered-content"
-    // Only include files that were copied from dotcortex (not generated content)
-    // Generated files (CLAUDE.md, MEMORY.md, domain skills, knowledge) are NOT managed
-  }
+  "managed_files": {}
 }
 ```
+
+Fill from the interview: `prefix` (Q6), `project_name` + `component_repos` (Phase 1 scan), `profiles` (Q5/Q11d/pack questions — include `review` only if Q11d configured it), `task_storage`/`task_remote` (Q8/Q11), `workflow_policy` (Q11b, or inherited from team context), `linear.enabled` (Q11c), `tools` (Q2). `managed_files` starts empty — the Phase 4.5 render fills it. Machine-local review values (Q11d) go in gitignored `.dotcortex/config.local.json` with the same `{"config": {"review": {...}}}` shape.
 
 If Q13 connected an org repo, set:
 
@@ -637,7 +652,7 @@ If Q13 selected "create new org context repo", scaffold:
 
 **What counts as managed:**
 - All files from `commands/` (pm.md, ticket-*.md, next.md, backlog.md, standup.md, dotcortex-init.md, dotcortex-update.md)
-- PM skill files (pm-agent, backlog-cleanup, feature-planning)
+- PM skill files (pm-agent, backlog-validation, todo-queue, feature-planning, thinking-modes)
 - Template files (simple, parent, child ticket templates)
 
 **What is NOT managed (project-specific, never auto-updated):**

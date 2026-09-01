@@ -46,7 +46,7 @@ Implement the ticket completely. Rules (these mirror the repo's agent instructio
 - No servers, no `curl`, no running tests — user validates
 - No commits, no pushes
 - Match existing code conventions in each component
-- Update the ticket file as you go: set `Status: IN PROGRESS`, check off implementation-checklist items you complete
+- Claim the ticket via the `/ticket-status` workflow (`Status: IN_PROGRESS` — canonical vocabulary; that workflow owns the task-repo commit). Check off implementation-checklist items as you complete them; the "no commits" rule above applies to CODE — ticket status changes always commit through `/ticket-status`.
 
 ## Step 4: Build the review packet
 
@@ -111,7 +111,7 @@ Append to the ticket file:
 - `## Review` section: which model reviewed, verbatim `VERDICT` line, and the blocking items (if any).
   If the cross-model review was skipped per Step 5, record `VERDICT: SKIPPED (no second model family
   configured)` and name the missing CLI
-- Set `Status: IN REVIEW` (the user marks DONE after validating — do not close or archive the ticket)
+- Set `Status: REVIEW` via the `/ticket-status` workflow (canonical vocabulary; the user marks DONE after validating — do not close or archive the ticket)
 
 ## Step 7: Present everything
 

@@ -37,10 +37,10 @@
 
 ### Subtasks
 
-See `{{TASKS_DIR}}/{{TICKET_PREFIX}}-XXX/` for detailed breakdown:
-- [ ] {{TICKET_PREFIX}}-YYY: First step description
-- [ ] {{TICKET_PREFIX}}-ZZZ: Second step description
-- [ ] {{TICKET_PREFIX}}-AAA: Third step description
+See `{{TASKS_DIR}}/{{TICKET_PREFIX}}-XXX/` for detailed breakdown (letter children — they consume no counter numbers):
+- [ ] {{TICKET_PREFIX}}-XXXa: First step description
+- [ ] {{TICKET_PREFIX}}-XXXb: Second step description
+- [ ] {{TICKET_PREFIX}}-XXXc: Third step description
 
 ### Testing Plan
 - Unit tests for [X]

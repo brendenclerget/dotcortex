@@ -35,7 +35,15 @@ Break down ticket $ARGUMENTS into implementation steps.
    - [ ] $ARGUMENTSc: Step 3
 ```
 
-5. **Report:** List subtasks created with dependency order
+5. **Land the breakdown — one scoped transaction:**
+```bash
+git -C {{TASKS_DIR}} pull --rebase
+git -C {{TASKS_DIR}} add "$ARGUMENTS/" BACKLOG.md    # the family folder + board row; exact paths, never -A
+git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: break down into subtasks"
+git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TASKS_DIR}} push; }
+```
+
+6. **Report:** List subtasks created with dependency order
 
 **Naming rules:**
 - Letters are lowercase: a, b, c, ... z

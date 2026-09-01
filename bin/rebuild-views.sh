@@ -128,6 +128,27 @@ except OSError:
       echo "  Refusing to modify it. Fix or remove the symlink, then re-run." >&2
       exit 1
     fi
+  elif [ -d "$view" ]; then
+    # A real directory. The installer's pre-init bootstrap view is a real dir
+    # containing ONLY symlinks that resolve into .dotcortex — that is managed
+    # content and safe to replace with the directory-symlink view. Anything
+    # else (any regular file, any foreign symlink) is user content: leave it.
+    local entry unmanaged=0 dc_real
+    dc_real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$DC")"
+    for entry in "$view"/* "$view"/.[!.]*; do
+      [ -e "$entry" ] || [ -L "$entry" ] || continue
+      if [ ! -L "$entry" ]; then unmanaged=1; break; fi
+      case "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$entry")" in
+        "$dc_real"/*) ;;
+        *) unmanaged=1; break ;;
+      esac
+    done
+    if [ "$unmanaged" -eq 1 ]; then
+      echo "rebuild-views.sh: WARN — $view is a real directory with unmanaged content; leaving it untouched." >&2
+      return 0
+    fi
+    echo "rebuild-views.sh: replacing managed bootstrap view dir: $view"
+    rm -rf "$view"
   elif [ -e "$view" ]; then
     echo "rebuild-views.sh: WARN — $view exists and is not a symlink; leaving it untouched." >&2
     return 0

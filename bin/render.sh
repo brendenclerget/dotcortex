@@ -74,7 +74,28 @@ source_prefix = os.environ["SOURCE_PREFIX"]
 with open(config_path) as f:
     config = json.load(f)
 cfg = config.get("config", config)
+
+# Optional gitignored per-machine overlay (e.g. review CLI paths): token values
+# only — never written back, never part of the manifest.
+local_path = os.path.join(os.path.dirname(os.path.abspath(config_path)), "config.local.json")
+if os.path.isfile(local_path):
+    with open(local_path) as f:
+        local_cfg = json.load(f).get("config", {})
+    for k, v in local_cfg.items():
+        if isinstance(v, dict) and isinstance(cfg.get(k), dict):
+            cfg = {**cfg, k: {**cfg[k], **v}}
+        else:
+            cfg = {**cfg, k: v}
 review = cfg.get("review", {})
+
+# Optional staging source map: when the source tree was assembled from multiple
+# profile subtrees, .sources.json maps staged-relative path -> repository-
+# relative origin so the manifest stays git-retrievable.
+src_map = {}
+src_map_path = os.path.join(source, ".sources.json")
+if os.path.isfile(src_map_path):
+    with open(src_map_path) as f:
+        src_map = json.load(f)
 
 def join_list(v):
     return ", ".join(v) if isinstance(v, list) else v
@@ -100,6 +121,8 @@ for root, dirs, files in os.walk(source):
     for name in sorted(files):
         src_path = os.path.join(root, name)
         rel = os.path.relpath(src_path, source)
+        if rel == ".sources.json":
+            continue
         with open(src_path, "rb") as f:
             raw = f.read()
         try:
@@ -132,7 +155,7 @@ for rel in sorted(outputs):
     new_manifest[rel] = {
         "sha256": hashlib.sha256(outputs[rel]).hexdigest(),
         "base_version": base_version,
-        "source": os.path.join(source_prefix, rel) if source_prefix else rel,
+        "source": src_map.get(rel) or (os.path.join(source_prefix, rel) if source_prefix else rel),
     }
 
 # Stale cleanup. managed_files keys are data from a mutable config file —
