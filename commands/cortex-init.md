@@ -288,23 +288,6 @@ Based on selection, add the appropriate rules to CLAUDE.md:
 
 There is exactly ONE sync contract when a remote exists (no modes): **every task mutation is an immediate scoped commit + push** — pull before reads, `git add <exact touched paths>` (never `-A`), commit, push, retry once on rejection. Session bookends and per-mode behavior do not exist; the pm-agent skill's Team Sync section documents the contract. Solo installs skip sync logic entirely.
 
-**Q11b: Workflow policy** (ordering: resolve Q13/team-context connection FIRST — when connecting to an existing team context, INHERIT the team's policy and skip this interview entirely; ask only when creating a fresh/standalone setup)
-- Question: "Who runs what? (These render into CLAUDE.md's workflow rules.)"
-- Collect single-select values for: `test_authoring` (allowed/ask), `test_execution` (allowed/ask/user_only), `server_lifecycle` (allowed/ask/user_only), `endpoint_probing` (allowed/ask/user_only), `documentation_creation` (allowed/ask), `ticket_creation` (proactive/followups_only/explicit_only), `ticket_close` (auto/ask)
-- Defaults (non-interactive): allowed / allowed / ask / allowed / ask / followups_only / ask
-- Store under `config.workflow_policy` (validated by `schemas/config.schema.json`); the CLAUDE.md `WORKFLOW_POLICY` marker block renders from these values — never hand-edited.
-
-**Q11c: Linear** (only if Q5 = full PM)
-- Question: "Attach tickets to Linear issues via the Linear MCP?"
-- Options: "Yes — Linear is our tracker" / "No — markdown only"
-- If yes: set `config.linear.enabled = true`. Commands use the Linear MCP when it's connected in a session, prompt the user to connect it when enabled-but-absent, and skip silently when disabled. No further Linear setup happens at init.
-
-**Q11d: Cross-model review** (single select)
-- Question: "Enable the cross-model review profile (/fix, /implement-review)? Requires a second model family's CLI."
-- Options: "Yes — configure reviewer now" / "Skip — no review profile"
-- If yes: collect `review.reviewer_cli`, `review.reviewer_model`, `review.coordinator_cli`, `review.coordinator_model`. CLI paths/models are per-machine — write them to `.dotcortex/config.local.json` (gitignored; the renderer overlays it for token values) and leave `config.review` unset in the shared config.
-- If skipped: EXCLUDE the `review` profile from the Phase 4.5 staging (its files contain review tokens that would fail strict rendering).
-
 **Q12: Guardrails** (free text)
 - Question: "Anything else Claude should never do? (e.g., 'never modify the auth module', 'always use TypeScript strict mode')"
 - Header: "Guardrails"
@@ -312,21 +295,41 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
   - "No special guardrails"
   - Pre-populated common ones based on stack
 
-**Q13: Org repo connection** (only if Q5a = org_connected)
-- Question: "Connect to an org context repo?"
+**Q13: Team context connection** (only if Q5a = org_connected)
+- Question: "Connect to a team context repo (shared skills/commands/knowledge/policy)?"
 - Header: "Org repo"
 - Options:
   - "Select existing repo (discover via gh)"
-  - "Create new org context repo"
+  - "Create new team context repo"
   - "Enter repo URL manually"
   - "Skip for now (continue as local-only)"
 
-**Q14: Org project mapping** (only if Q13 connects repo)
-- Question: "What project key should this repo map to in org context?"
-- Header: "Org project"
+**Q14: Task-repo project mapping** (only if Q13 connects repo and a shared task repo is used)
+- Question: "What team/project key does this project's task tree use in the shared task repo (teams/<team>/projects/<project>/)?"
+- Header: "Task mapping"
 - Options:
   - Auto-detected repo name from `git remote -v` (Recommended)
   - Enter manually
+
+**Q15: Workflow policy** (asked AFTER Q13/Q14 so team-context connection is already resolved — when Q13 connected an existing team context, INHERIT the team's policy and SKIP this question entirely; ask only for fresh/standalone setups)
+- Question: "Who runs what? (These render into CLAUDE.md's workflow rules.)"
+- Collect single-select values for: `test_authoring` (allowed/ask), `test_execution` (allowed/ask/user_only), `server_lifecycle` (allowed/ask/user_only), `endpoint_probing` (allowed/ask/user_only), `documentation_creation` (allowed/ask), `ticket_creation` (proactive/followups_only/explicit_only), `ticket_close` (auto/ask)
+- Defaults (non-interactive): allowed / allowed / ask / allowed / ask / followups_only / ask
+- Store under `config.workflow_policy` (validated by `schemas/config.schema.json`); the CLAUDE.md `WORKFLOW_POLICY` marker block renders from these values — never hand-edited.
+
+
+**Q16: Linear** (only if Q5 = full PM)
+- Question: "Attach tickets to Linear issues via the Linear MCP?"
+- Options: "Yes — Linear is our tracker" / "No — markdown only"
+- If yes: set `config.linear.enabled = true`. Commands use the Linear MCP when it's connected in a session, prompt the user to connect it when enabled-but-absent, and skip silently when disabled. No further Linear setup happens at init.
+
+
+**Q17: Cross-model review** (single select)
+- Question: "Enable the cross-model review profile (/fix, /implement-review)? Requires a second model family's CLI."
+- Options: "Yes — configure reviewer now" / "Skip — no review profile"
+- If yes: collect `review.reviewer_cli`, `review.reviewer_model`, `review.coordinator_cli`, `review.coordinator_model`. CLI paths/models are per-machine — write them to `.dotcortex/config.local.json` (gitignored; the renderer overlays it for token values) and leave `config.review` unset in the shared config.
+- If skipped: EXCLUDE the `review` profile from the Phase 4.5 staging (its files contain review tokens that would fail strict rendering).
+
 
 ## Phase 3: Stack Research & Skill Generation
 
@@ -442,7 +445,7 @@ _No entries yet._
 
 Write each generated skill to `.dotcortex/skills/[skill-name]/SKILL.md`.
 
-### 4.5: Task system (if Q5 = full PM)
+### 4.5: Base render pipeline (ALL installs) + task system (if Q5 = full PM)
 
 Task paths are fixed in v1.5:
 - Canonical: `.dotcortex/tasks/`
@@ -452,7 +455,7 @@ Task paths are fixed in v1.5:
 
 1. Write `.dotcortex/config.json` first (Phase 4.9's schema — the renderer reads token values from it).
 2. Locate the source checkout: `source_checkout` in `.dotcortex/install-info.json` (recorded by install.sh). If that path no longer exists, clone `config.source` and check out the exact tag recorded as `dotcortex_version` in install-info.
-3. Assemble a staging tree from the selected profiles: for each enabled profile in `<source_checkout>/base/profiles.json` (`core` always; `pm` if Q5 = full PM; `review` only if Q11d configured it; packs per interview), copy that profile's `commands/`, `skills/`, `templates/` subtrees from `base/` into one temp staging dir, and write `<staging>/.sources.json` mapping every staged-relative path to its repository-relative origin (e.g. `"commands/ticket-new.md": "base/pm/commands/ticket-new.md"`) — the renderer uses this for git-retrievable manifest sources. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
+3. Assemble a staging tree from the selected profiles: for each enabled profile in `<source_checkout>/base/profiles.json` — `core` ALWAYS renders, for every install mode including lightweight/no-task setups; `pm` only if Q5 = full PM; `review` only if Q17 configured it; packs per interview, copy that profile's `commands/`, `skills/`, `templates/` subtrees from `base/` into one temp staging dir, and write `<staging>/.sources.json` mapping every staged-relative path to its repository-relative origin (e.g. `"commands/ticket-new.md": "base/pm/commands/ticket-new.md"`) — the renderer uses this for git-retrievable manifest sources. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
 4. **Migrate bootstrap commands into the layer** so the resolved view can own `.dotcortex/commands`: `mkdir -p .dotcortex/layers/org/commands && mv .dotcortex/commands/cortex-init.md .dotcortex/commands/cortex-update.md .dotcortex/layers/org/commands/` (then remove the now-empty `.dotcortex/commands` dir).
 5. Render: `.dotcortex/bin/render.sh --source <staging> --dest .dotcortex/layers/org --strict --config .dotcortex/config.json --base-version <dotcortex_version from install-info>`. Strict mode means an unresolved `{{TOKEN}}` aborts with nothing written — fix the config, re-run. The renderer records every file in `managed_files` (sha256 + base_version + repository-relative source).
 6. Resolve views: `.dotcortex/bin/rebuild-views.sh --root <project-root>` (Phase 4.6).
@@ -509,6 +512,7 @@ Based on Q7 and Q8, append to the project's `.gitignore`:
 ```
 # AI coding tool context
 .claude/plans/
+.dotcortex/config.local.json
 ```
 
 If Codex selected, also add: `.codex/` (user config, not project context)
@@ -626,7 +630,7 @@ The file must be **valid JSON** (no comments) and validate against `schemas/conf
 }
 ```
 
-Fill from the interview: `prefix` (Q6), `project_name` + `component_repos` (Phase 1 scan), `profiles` (Q5/Q11d/pack questions — include `review` only if Q11d configured it), `task_storage`/`task_remote` (Q8/Q11), `workflow_policy` (Q11b, or inherited from team context), `linear.enabled` (Q11c), `tools` (Q2). `managed_files` starts empty — the Phase 4.5 render fills it. Machine-local review values (Q11d) go in gitignored `.dotcortex/config.local.json` with the same `{"config": {"review": {...}}}` shape.
+Fill from the interview: `prefix` (Q6), `project_name` + `component_repos` (Phase 1 scan), `profiles` (Q5/Q17/pack questions — include `review` only if Q17 configured it), `task_storage`/`task_remote` (Q8/Q11), `workflow_policy` (Q15, or inherited from team context), `linear.enabled` (Q16), `tools` (Q2). `managed_files` starts empty — the Phase 4.5 render fills it. Machine-local review values (Q17) go in gitignored `.dotcortex/config.local.json` with the same `{"config": {"review": {...}}}` shape.
 
 If Q13 connected an org repo, set:
 
@@ -638,15 +642,15 @@ If Q13 connected an org repo, set:
 }
 ```
 
-If Q13 selected "create new org context repo", scaffold:
-- `RULES.md`
-- `knowledge/`
-- `skills/`
+If Q13 selected "create new team context repo", scaffold the TEAM layer (two-layer topology — org-base comes from the dotcortex repo itself; there is NO per-project context tree):
 - `commands/`
-- `projects/<project_key>/knowledge/`
-- `projects/<project_key>/skills/`
-- `projects/<project_key>/commands/`
-- `projects/<project_key>/tasks/`
+- `skills/`
+- `knowledge/`
+- `templates/`
+- `policy/` (the team workflow_policy lives here)
+- `memory/` (team MEMORY.md index)
+
+Record it in config as `context_repo: {url, checkout_path: ".dotcortex/layers/team", branch, team_key}` — never `org.project_key` or project-scoped context paths. Tasks are NOT part of the context repo (task repo is separate; see task_repo config).
 
 **Checksums are the renderer's job, not yours:** `bin/render.sh` records every rendered file's SHA-256, base_version, and repository-relative source into `managed_files` as part of Phase 4.5. Never compute or write manifest entries by hand — if `managed_files` is empty after init, the render step was skipped and must be re-run.
 

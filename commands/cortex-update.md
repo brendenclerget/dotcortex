@@ -68,7 +68,7 @@ if [ -z "$LATEST_TAG" ]; then echo "No release tags upstream — aborting update
 git checkout --quiet "$LATEST_TAG"
 ```
 
-The installed version is `dotcortex_version` in `install-info.json` (the same value install.sh wrote — an exact tag, or `untagged-<sha>` for dev installs). If `LATEST_TAG` equals it, report "Already up to date" and clean up.
+The installed version is `dotcortex_version` in `install-info.json` (the same value install.sh wrote — an exact tag, or `untagged-<sha>` for dev installs). "Already up to date" requires BOTH: `LATEST_TAG` equals it, AND every `managed_files[].base_version` equals it — a post-init installer re-run bumps install-info without re-rendering, so the payload can lag the recorded version. If only the payload lags, proceed with the update using the manifest's base_versions as merge bases.
 
 ### Step 3: Compare Each Managed File
 

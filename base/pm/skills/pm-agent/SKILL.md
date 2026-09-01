@@ -60,7 +60,7 @@ Don't skip sections - having consistent structure helps tracking.
 4. **Simple vs Complex**:
    - < 4 hours = single ticket
    - \> 1 day = parent + subtasks (3-5 max)
-5. **Be autonomous** - Mark done, create tickets, update status without asking
+5. **Autonomy is policy-scoped** - Update status freely; create tickets per `config.workflow_policy.ticket_creation` (`proactive` = create when work is described; `followups_only` = only letter-children/follow-ups of existing work, never new top-level tickets unprompted; `explicit_only` = only when the user asks); close per `workflow_policy.ticket_close`
 6. **Git is truth** - Verify completion via commits
 
 ## Start Prompts
@@ -246,22 +246,12 @@ Follow-ups are tasks that emerge **during** work on an existing ticket — thing
 
 **CRITICAL: never invent ticket numbers or reuse numbers from planning documents.** Top-level IDs come only from `/ticket-new`'s allocation transaction (which reads the freshly pulled counter, or the Linear issue identifier when Linear is available). Never read, increment, or write `.ticket_counter` by hand. Letter children never touch the counter.
 
-```bash
-# 1. Read next number FIRST
-cat {{TASKS_DIR}}/.ticket_counter  # e.g., returns "55"
-
-# 2. Create ticket with that number
-# {{TICKET_PREFIX}}-055-my-ticket.md
-
-# 3. Increment counter IMMEDIATELY after creating
-echo "56" > {{TASKS_DIR}}/.ticket_counter
-```
-
 **Rules:**
-- Never reuse numbers
-- Never guess numbers from parent ticket subtask tables
-- If collision found, skip forward
-- Increment for EACH ticket created
+- Never reuse numbers; never guess numbers from parent ticket subtask tables
+- The ONLY place the counter is read or written is inside `/ticket-new`'s
+  pull -> allocate -> create -> push transaction (collision = allocate the next
+  free number inside that same transaction)
+- One number per top-level ticket; letter children consume none
 
 ## Git Integration
 

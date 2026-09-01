@@ -3,7 +3,7 @@
 **Status:** TODO | IN_PROGRESS | BLOCKED | PLANNING | REVIEW | DONE
 **Priority:** HIGH | MEDIUM | LOW
 **Type:** PARENT
-**Subtasks:** {{TICKET_PREFIX}}-YYY, {{TICKET_PREFIX}}-ZZZ
+**Subtasks:** {{TICKET_PREFIX}}-XXXa, {{TICKET_PREFIX}}-XXXb
 **Created:** YYYY-MM-DD
 **Updated:** YYYY-MM-DD
 

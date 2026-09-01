@@ -27,7 +27,9 @@ If owner is omitted:
 git config user.name
 ```
 
-## Step 2: Locate the ticket
+## Step 2: Pull, then locate the ticket
+
+FIRST: `git -C {{TASKS_DIR}} pull --rebase` — always start from remote truth; another session may have moved, archived, or already re-statused this ticket. Resolve the ticket's path AFTER the pull.
 
 ```bash
 find {{TASKS_DIR}} -name "$TICKET_ID*" -not -path "*/archive/*"
@@ -38,10 +40,6 @@ Handle both layouts:
 - **Parent directory:** `{{TASKS_DIR}}/{{TICKET_PREFIX}}-XXX/{{TICKET_PREFIX}}-XXX-name.md` (and child files inside)
 
 If not found in active tasks, check `{{TASKS_DIR}}/archive/`. If transitioning back from archive, move it out before editing — closed tickets shouldn't be edited in place.
-
-## Step 2b: Pull first
-
-Before editing anything: `git -C {{TASKS_DIR}} pull --rebase` — always start from remote truth; another session may have already moved this ticket.
 
 ## Step 3: Update ticket fields
 
@@ -66,9 +64,10 @@ Read `{{TASKS_DIR}}/BACKLOG.md` and move the ticket entry to the section that ma
 Stage only the files this status change touched — never the whole tasks dir (parallel sessions leave unrelated dirty files):
 
 ```bash
-git add "$TICKET_FILE" "{{TASKS_DIR}}/BACKLOG.md"
-git commit -m "chore: set $TICKET_ID to $STATUS"
-git push || { git pull --rebase && git push; }
+# $TICKET_FILE is the path RELATIVE to {{TASKS_DIR}} (resolved after the Step 2 pull)
+git -C {{TASKS_DIR}} add "$TICKET_FILE" BACKLOG.md
+git -C {{TASKS_DIR}} commit -m "chore: set $TICKET_ID to $STATUS"
+git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TASKS_DIR}} push; }
 ```
 
 ## Step 6b: Linear (after the commit)

@@ -36,11 +36,8 @@ allocation transaction in Step 5b turns the draft into a numbered file. Never re
 the counter early and write it later — a gap between read and push hands two
 sessions the same number.
 
-**Create parent ticket:**
-- Use the identifier established above (Linear identifier, or the transactionally
-  allocated `{{TICKET_PREFIX}}-XXX`)
-- Create `{{TASKS_DIR}}/{{TICKET_PREFIX}}-XXX-$ARGUMENTS.md`
-- Mark as **Type: PARENT**
+**This step establishes IDENTITY only** (a Linear issue, or "deferred to Step 5b").
+No file is created here — the ticket file lands inside the Step 5b transaction.
 
 ## Step 2: Gather feature requirements
 
@@ -151,9 +148,12 @@ until [ $attempt -ge 5 ]; do
   git -C {{TASKS_DIR}} commit -m "$TICKET: create ticket"
   git -C {{TASKS_DIR}} push && { echo "Created $TICKET"; break; }
 
-  # 5. Push rejected: roll back COMPLETELY (commit + working tree) so the next
-  #    pull starts clean, then retry with a fresh allocation
-  git -C {{TASKS_DIR}} reset --hard HEAD~1     # discards only this transaction's own commit
+  # 5. Push rejected: roll back ONLY this transaction's own artifacts (never a
+  #    tree-wide reset — other sessions' dirty files must survive), then retry
+  git -C {{TASKS_DIR}} reset --soft HEAD~1
+  git -C {{TASKS_DIR}} restore --staged .ticket_counter "$TICKET_FILE" BACKLOG.md
+  git -C {{TASKS_DIR}} checkout -- .ticket_counter BACKLOG.md   # our edits only; regenerated next attempt
+  rm -rf "{{TASKS_DIR}}/$TICKET_FILE" "{{TASKS_DIR}}/$TICKET"/  # the files WE just created
 done
 ```
 

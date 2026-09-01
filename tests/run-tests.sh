@@ -434,6 +434,16 @@ T6SRC="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["manage
 T6VER="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["managed_files"]["commands/ticket-new.md"]["base_version"])' "$PROJ/.dotcortex/config.json")"
 [ "$T6VER" = "$INSTVER" ] && ok "manifest base_version matches installed version" || fail "manifest base_version matches installed version"
 
+# Non-PM install: core profile alone renders strict-clean (lightweight setups)
+CSTAGE="$WORK/t6-core"; mkdir -p "$CSTAGE"
+for sub in commands skills templates; do
+  [ -d "$REPO/base/core/$sub" ] && { mkdir -p "$CSTAGE/$sub"; cp -R "$REPO/base/core/$sub/" "$CSTAGE/$sub/"; }
+done
+cp "$WORK/t5/config.json" "$WORK/t6-core-cfg.json"
+bash "$REPO/bin/render.sh" --source "$CSTAGE" --dest "$WORK/t6-core-out" \
+  --config "$WORK/t6-core-cfg.json" --base-version vTEST --strict >/dev/null 2>&1 \
+  && ok "core-only profile renders strict-clean (non-PM installs)" || fail "core-only profile renders strict-clean (non-PM installs)"
+
 # Re-run install AFTER init: bootstrap goes to the layer, rebuild keeps views coherent
 bash "$REPO/install.sh" --yes "$PROJ" >/dev/null 2>&1 \
   && ok "post-init install re-run succeeds" || fail "post-init install re-run succeeds"

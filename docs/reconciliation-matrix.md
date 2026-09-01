@@ -16,7 +16,7 @@ base/
     launch-planning/             # future optional pack, shipped disabled
 ```
 
-Install flow: `cortex-init` assembles a staging tree from the selected profiles' subtrees, then `bin/render.sh --source staging --dest .dotcortex/layers/org --strict`, then `bin/rebuild-views.sh`. Bootstrap commands (`commands/cortex-init.md`, `commands/cortex-update.md`) stay top-level — `install.sh` copies them before any render exists.
+Install flow: `cortex-init` assembles a staging tree from the selected profiles' subtrees (the pipeline runs for EVERY install; the profile set varies — `core` is always included, `pm` only for full PM), then `bin/render.sh --source staging --dest .dotcortex/layers/org --strict`, then `bin/rebuild-views.sh`. Bootstrap commands (`commands/cortex-init.md`, `commands/cortex-update.md`) stay top-level **in this repo** — `install.sh` copies them before any render exists. **In an installed project**, they live in `.dotcortex/commands/` pre-init and are migrated into `.dotcortex/layers/org/commands/` by init so the resolved view can own the directory; post-init installer re-runs target the layer directly.
 
 ## The Linear block (canonical wording, used by every command that touches status)
 

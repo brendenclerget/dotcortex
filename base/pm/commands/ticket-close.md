@@ -10,6 +10,10 @@ Close and archive ticket: **$ARGUMENTS**
 
 Execute the full close workflow for this ticket. Follow every step — do not skip or reorder.
 
+## Step 0: Pull first
+
+`git -C {{TASKS_DIR}} pull --rebase` before reading anything — the frozen contract is pull-before-read; another session may have already closed or moved this ticket.
+
 ## Step 1: Locate the ticket
 
 ```bash
@@ -59,12 +63,16 @@ Documentation that outlives the ticket and is readable by anyone working in this
 **Draft the entries now; APPLY them only after Step 8's task-repo push succeeds** — the
 close commit is authoritative and a failed knowledge write must never block or reorder it.
 
-**Destination:** `.dotcortex/knowledge/`. When a team context is connected, that resolved
-path is backed by the **team layer** — learnings roll up so future agents inherit them
-without excavating closed projects — and the write goes through the shared capture helper
-(same pull → scoped commit → push transaction as tasks, retried on rejection). If no team
-context is connected, the entry lands in the project's own `.dotcortex/knowledge/` as a
-plain file edit.
+**Destination mechanics:** `.dotcortex/knowledge/` is a GENERATED resolved view
+(per-file symlinks) — never create files directly in it. Writes go to the layer:
+- **Existing file:** edit through the resolved path (the symlink writes through to the layer file).
+- **New file:** create it in `.dotcortex/layers/team/knowledge/` (the team/local layer —
+  create the directory if this is the first entry), then run
+  `.dotcortex/bin/rebuild-views.sh --root .` so the view republishes it.
+- **Team remote connected:** the layer is a checkout — the capture commit uses the same
+  pull → scoped add → commit → push transaction as tasks, retried on rejection. Learnings
+  roll up so future agents inherit them without excavating closed projects.
+- **No team remote:** the layer write is a plain local file edit; nothing to push.
 
 **Store when the ticket reveals:**
 - A technical gotcha that would bite someone again
@@ -183,8 +191,10 @@ the report rather than reopening the close.
 
 > **Linear:** If the Linear MCP is available in this session, set the ticket's linked issue to Done. If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
 
-If the issue update fails, leave a visible pending-sync note in the ticket and continue;
-a failed follow-up never undoes or duplicates an already-valid close.
+If the issue update fails, record a pending-sync note as its own scoped follow-up
+transaction (the archived ticket file is the exact path: `git -C {{TASKS_DIR}} add <archived-ticket> && git commit -m "$ARGUMENTS: pending Linear sync" && git push`).
+A failed follow-up never undoes or duplicates an already-valid close; the next status
+touch retries the Linear update and clears the marker.
 
 ## Step 9: Report
 

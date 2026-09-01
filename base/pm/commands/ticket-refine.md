@@ -93,7 +93,7 @@ Do not read `.ticket_counter`, do not increment it, and do not create a Linear i
 1. **Pick the next free letter suffix** by looking at what already exists:
 ```bash
    ls {{TASKS_DIR}}/$ARGUMENTS/ 2>/dev/null
-   # e.g. if $ARGUMENTS{a,b} exist, the next remaining item is $ARGUMENTS-c
+   # e.g. if $ARGUMENTS{a,b} exist, the next remaining item is ${ARGUMENTS}c
 ```
 
 2. **Create the child in the {{TICKET_PREFIX}}-XXX/ folder:**

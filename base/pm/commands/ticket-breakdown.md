@@ -35,10 +35,13 @@ Break down ticket $ARGUMENTS into implementation steps.
    - [ ] $ARGUMENTSc: Step 3
 ```
 
-5. **Land the breakdown — one scoped transaction:**
+5. **Land the breakdown — one scoped transaction.** The pull already happened in
+step 0 (below) BEFORE any file was read or moved. Use `git mv` for the parent's
+move into the family folder so the deletion of the old flat path is staged with it:
 ```bash
-git -C {{TASKS_DIR}} pull --rebase
-git -C {{TASKS_DIR}} add "$ARGUMENTS/" BACKLOG.md    # the family folder + board row; exact paths, never -A
+# step 0 (runs FIRST, before reading the parent): git -C {{TASKS_DIR}} pull --rebase
+git -C {{TASKS_DIR}} mv "$PARENT_FLAT_FILE" "$ARGUMENTS/"   # if the parent was a flat file
+git -C {{TASKS_DIR}} add "$ARGUMENTS/" BACKLOG.md            # family folder + board row; exact paths, never -A
 git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: break down into subtasks"
 git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TASKS_DIR}} push; }
 ```

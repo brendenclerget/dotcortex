@@ -129,14 +129,16 @@ except OSError:
       exit 1
     fi
   elif [ -d "$view" ]; then
-    # A real directory. The installer's pre-init bootstrap view is a real dir
-    # containing ONLY symlinks that resolve into .dotcortex — that is managed
-    # content and safe to replace with the directory-symlink view. Anything
-    # else (any regular file, any foreign symlink) is user content: leave it.
-    local entry unmanaged=0 dc_real
+    # A real directory. The ONLY real dir we may replace is the installer's
+    # pre-init bootstrap view: entries are exactly a subset of the two known
+    # bootstrap filenames, each a symlink resolving into .dotcortex. Any other
+    # name, any regular file, any foreign symlink = user content: leave it.
+    local entry unmanaged=0 dc_real base
     dc_real="$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$DC")"
     for entry in "$view"/* "$view"/.[!.]*; do
       [ -e "$entry" ] || [ -L "$entry" ] || continue
+      base="$(basename "$entry")"
+      case "$base" in cortex-init.md|cortex-update.md) ;; *) unmanaged=1; break ;; esac
       if [ ! -L "$entry" ]; then unmanaged=1; break; fi
       case "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$entry")" in
         "$dc_real"/*) ;;

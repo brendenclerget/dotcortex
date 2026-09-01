@@ -103,7 +103,7 @@ write_install_metadata() {
   "last_migrated_at": "$now_utc",
   "updated_on": "$now_date",
   "install_mode": "$INSTALL_MODE",
-  "source_checkout": "$DOTCORTEX_DIR",
+  "source_checkout": "$(printf '%s' "$DOTCORTEX_DIR" | sed 's/\\/\\\\/g; s/"/\\"/g')",
   "migration_state_dir": ".dotcortex/.migrations"
 }
 EOF
@@ -253,6 +253,10 @@ cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$BOOTSTRAP_DEST/cortex-update.md"
 # bootstrap files appear in .dotcortex/commands and the tool views.
 if [ -d "$TARGET_DIR/.dotcortex/layers/org/commands" ]; then
   "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh" --root "$TARGET_DIR"
+  echo ""
+  echo "NOTE: this refreshed bootstrap commands + engine only. The rendered"
+  echo "payload still carries its previous base_version — run /cortex-update"
+  echo "to bring managed files to $DOTCORTEX_VERSION."
 fi
 
 # Rebuild minimal symlink view for bootstrap commands.
