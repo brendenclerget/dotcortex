@@ -1,6 +1,6 @@
 # TASK: dotcortex Team Readiness — deterministic core, team distribution, upstream contributions
 
-**Status:** REVIEWED (Codex rounds 1–2, 2026-09-01) — round-2 execution-contract fixes incorporated
+**Status:** IMPLEMENTED (2026-09-01) — all workstreams complete on branch `team-readiness`; every checkpoint cross-model-reviewed to APPROVE (gpt-5.6-sol); 96 tests passing. NOT pushed; release tag not yet minted; donor-repo migration and the two-machine acceptance canary run at rollout.
 **Owner:** Brenden
 **Context:** dotcortex (github.com/brendenclerget/dotcortex) is being prepped for adoption by CTO + AI transformation team. Audit of the long-running TCGTrack install (pinned at `72ab6e0`, upstream HEAD `3f3e7bc`) identified upstreamable improvements and structural gaps. Round-1 verdict: generalize the proven separate-task-repo model into a namespaced multi-team system. Round-2 verdict: architecture sound; execution contracts below are now frozen.
 
@@ -22,7 +22,7 @@ This system is markdown files coordinated through git. Git is the transaction en
 - [x] **This document is the authoritative design.** The historical `docs/design/*` sketches are gitignored local drafts that were never in the remote; they are superseded by the frozen contracts here and will NOT be committed. Any plan reference to them means "consult if locally present; this document wins."
 - [x] Extract the donor-install contribution sources into **sanitized source patches / behavior fixtures** committed to the repo (`sources/`), so all later work runs from a clean clone with no machine-specific sibling-path dependency. *(Done — commit `ec3e7b5`, 27 files.)*
 - [x] De-brand **once, at source**: org-base assets carry explicit tokens (`{{TICKET_PREFIX}}`, `{{TASKS_DIR}}`, `{{PROJECT_NAME}}`, …). The renderer substitutes tokens; it never "strips" identifiers. **Scope of the rule: donor-project identifiers only** (product/company names, ticket IDs, personal names, machine paths, pinned model versions). Tool-vendor names (Claude, Anthropic, Codex, OpenAI) are allowed — this is tooling built around those products. CI forbidden-token scans run against the **shipped asset manifest only**. *(Done — `scripts/check-debrand.sh` passes on `sources/`; W1's manifest CI gets a stronger case-insensitive denylist + token validation.)*
-- [ ] **Review-config schema (recorded so W3's builder doesn't invent it):** the cross-model review flow renders from four config values — `review.reviewer_cli`, `review.reviewer_model` (the opposite-family reviewer invocation), `review.coordinator_cli`, `review.coordinator_model` (the coordinating family, used when review runs in the reverse direction). Map to tokens `{{REVIEWER_CLI}}`/`{{REVIEWER_MODEL}}`/`{{COORDINATOR_CLI}}`/`{{COORDINATOR_MODEL}}` in `sources/commands/implement.md`. Lives in gitignored user config per the team-policy/local-executable split.
+- [x] **Review-config schema (recorded so W3's builder doesn't invent it):** the cross-model review flow renders from four config values — `review.reviewer_cli`, `review.reviewer_model` (the opposite-family reviewer invocation), `review.coordinator_cli`, `review.coordinator_model` (the coordinating family, used when review runs in the reverse direction). Map to tokens `{{REVIEWER_CLI}}`/`{{REVIEWER_MODEL}}`/`{{COORDINATOR_CLI}}`/`{{COORDINATOR_MODEL}}` in `sources/commands/implement.md`. Lives in gitignored user config per the team-policy/local-executable split.
 
 ## Frozen contracts
 
@@ -190,19 +190,27 @@ All flow through Step-0 sanitized patches and render tokens. Task-path items (1,
 
 ## Execution order
 
-0. **Step 0** — commit ADRs/designs; sanitized source patches/fixtures; de-brand at source.
-1. Freeze contracts (done — this document).
-2. **W4** — reconcile upstream baseline with TCGTrack improvements.
-3. **W1** — render + views + versioning + installer fixes + tests, carrying the **W3.0 reconciled base** as first payload.
-4. **W2A** — namespaced task repo, transaction script, migration canary.
-5. **W2C** — team context lifecycle (thin) + context migration canary.
-6. **W3.1** task-path items (1, 3, 4, 5) on the transaction + capture APIs.
-7. **W2B** — Linear layer.
+0. **Step 0** — DONE (`fc7bc07`).
+1. Freeze contracts — DONE.
+2. **W4** — DONE (`97aeb9e` + `aff24a8`, APPROVED).
+3. **W1** — DONE: checkpoint A (substrate, 5 review rounds → APPROVE) + checkpoint B (reconciled base payload, 5 rounds → APPROVE).
+4. **W2A** — DONE: task-tx.sh, migrate-task-repo.sh, namespaced init wiring (3 rounds → APPROVE).
+5. **W2C** — DONE: /context, /cortex-sync, /cortex-push, capture helper (same rounds).
+6. **W3.1** task-path items — DONE (shipped inside checkpoint B's base).
+7. **W2B** — DONE at the owner-directed light-touch level.
 7. **W3.1** independent items (6, 7, 8); later: launch-planning pack.
+
+## Rollout checklist (what remains when this branch ships)
+
+1. Review the branch, push, tag `v1.5.0` (version resolution activates on the tag).
+2. Migrate the donor task repo with `scripts/migrate-task-repo.sh` when its owner chooses.
+3. Run the two-machine acceptance canary from the gate below (T6/T7 cover it synthetically; the real-world pass needs two laptops + a real Linear workspace).
+4. Team onboarding: create the first team context repo via `/cortex-init` → point members at it with `/context add`.
 
 ## Review log
 
-- **2026-09-01, Codex round 1:** CONDITIONAL GO. 10/10 blocking accepted (topology default, config split, migration canary, ID strategy, transaction scripts, canonical config, Linear contract, precedence inversion, reordering, acceptance test). Citation correction: config conflict was two-way (config.json vs .localmem.json), not three-way — CLAUDE.md has no session-end push rule.
+- **2026-09-01, implementation reviews (gpt-5.6-sol, self-dispatched):** W4: 1 fix round → APPROVED. W1-A (substrate): 5 rounds — stranded-claim, marked-tree validation, render convergence/atomicity, symlink-indirection categorical refusal, ENOENT/EACCES discrimination → APPROVE. W1-B (base payload): 5 rounds — 10 + 17 + 6 + 2 findings fixed (install/init/render integration, contract coherence across all PM commands, layer-aware knowledge writes, policy wiring) → APPROVE. W2: 3 rounds — autostash transactions, pathspec'd commits, lock, space-safe migration → APPROVE. Final: 96 tests.
+- **2026-09-01, Codex round 1 (planning):** CONDITIONAL GO. 10/10 blocking accepted (topology default, config split, migration canary, ID strategy, transaction scripts, canonical config, Linear contract, precedence inversion, reordering, acceptance test). Citation correction: config conflict was two-way (config.json vs .localmem.json), not three-way — CLAUDE.md has no session-end push rule.
 - **2026-09-01, Codex round 2:** CONDITIONAL GO. 9/9 blocking accepted: layers filesystem contract; extraction-not-replacement with reconciliation matrix (all four stale-behavior citations verified, incl. ticket-refine contradicting ticket-new on subtask numbering); install-profile manifests + lightweight backlog validation; finer workflow_policy (authoring vs execution split, ticket_creation field resolving the verified CLAUDE.md/AGENTS.md contradiction) keeping git_autonomy; immediate-scoped-transaction contract replacing session bookends; frozen ID/offline behavior (LOCAL-ULID promotion); true three-way merge via stored base_version + tag checkout; agent-invokes-MCP runtime boundary; Step-0 source sanitization with token-based de-branding. Non-blocking 1–6 accepted (same-machine acceptance tests, launch-planning pack tracked, no seeded feedback memories, scoped de-brand CI, marker semantics, deferred design-artifact format). One citation note: ticket-implement.md:69 doesn't show the test-authoring distinction claimed, but the policy split is correct and adopted.
 - **2026-09-01, Codex round 3:** CONDITIONAL GO. Accepted, mostly simplified per the new "it's markdown in git" guiding constraint: counter restored to topology + templates moved to context layers (B1); thin W2C context lifecycle + `/cortex-push` team→org + context migration canary (B2, NB2); knowledge writes reuse the task git-transaction pattern with path-level branch protection — no locks/dedupe engine (B3, simplified); close ordering task→knowledge→Linear with retry-on-pending — **saga/outbox/operation-ID machinery rejected** as over-engineering (B4, principle kept, apparatus dropped); knowledge quality convention as writing rules not machinery (B5); additive-preferred team assets with `based_on_org_version` escape hatch, claim restated as "uniform baseline, deliberate divergence" (B6); workflow policy team-scoped + inherited at project connect + JSON Schema (B7); layer-path leftovers fixed — templates/memory/policy paths, context project_key dropped, stale phasing sentences removed, vendor→org-base rename (B8, NB4); concurrent/failed-rollup acceptance lines (B9); projects-hold-tasks clarified to include config + markers (NB1); MEMORY-as-pointer convention (NB3).
 - **2026-09-01, owner revision (post round 2):** layering simplified from vendor→team→project to **org→team**; vendor layer = the org's curated dotcortex repo; project-level context eliminated — projects are small in-domain efforts holding tasks only; knowledge rolls up to the team layer via ticket-close extraction (direct commit), team→org via `/cortex-push` PR; skills/commands changes reviewed at both levels; MEMORY.md is team-scoped.
