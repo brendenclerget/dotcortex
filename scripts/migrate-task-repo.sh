@@ -49,12 +49,12 @@ mkdir -p "$REPO/$DEST"
 # Move only TRACKED top-level entries (git ls-files, so ignored/untracked root
 # artifacts are never handed to git mv and can't fail the migration mid-way).
 moved=0
-for name in $(git -C "$REPO" ls-files | cut -d/ -f1 | sort -u); do
-  case "$name" in .git|teams) continue ;; esac
+while IFS= read -r name; do
+  case "$name" in .git|teams|"") continue ;; esac
   [ -e "$REPO/$name" ] || continue
   git -C "$REPO" mv "$name" "$DEST/$name"
   moved=$((moved + 1))
-done
+done < <(git -C "$REPO" ls-files | cut -d/ -f1 | sort -u)
 
 # Report anything left behind (ignored/untracked) so nothing silently vanishes.
 leftover="$(cd "$REPO" && ls -A | grep -v -e '^\.git$' -e '^teams$' || true)"

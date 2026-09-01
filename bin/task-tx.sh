@@ -32,7 +32,7 @@ HAS_REMOTE=1
 git -C "$DIR" remote get-url origin >/dev/null 2>&1 || HAS_REMOTE=0
 
 # Serialize concurrent local mutations (same checkout, parallel sessions).
-LOCKDIR="$(git -C "$DIR" rev-parse --git-dir)/dotcortex-tx.lock"
+LOCKDIR="$(git -C "$DIR" rev-parse --absolute-git-dir)/dotcortex-tx.lock"
 if [ "$PULL_ONLY" -eq 0 ]; then
   tries=0
   until mkdir "$LOCKDIR" 2>/dev/null; do
