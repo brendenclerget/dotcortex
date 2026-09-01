@@ -45,8 +45,14 @@ fi
 
 # --autostash: callers legitimately edit tracked files BEFORE the transaction
 # runs; the stash carries the working tree over the rebase and restores it.
+# A brand-new EMPTY remote has no ref to pull — skip the pull; the first push
+# below creates the branch.
 if [ "$HAS_REMOTE" -eq 1 ]; then
-  git -C "$DIR" pull --rebase --autostash
+  if git -C "$DIR" ls-remote --exit-code origin HEAD >/dev/null 2>&1; then
+    git -C "$DIR" pull --rebase --autostash
+  else
+    echo "task-tx.sh: remote is empty — first push will create the branch"
+  fi
 fi
 
 if [ "$PULL_ONLY" -eq 1 ]; then
@@ -68,9 +74,12 @@ fi
 git -C "$DIR" commit -m "$MSG" -- "${PATHS[@]}"
 
 if [ "$HAS_REMOTE" -eq 1 ]; then
-  if ! git -C "$DIR" push; then
-    git -C "$DIR" pull --rebase --autostash
-    git -C "$DIR" push
+  if ! git -C "$DIR" push 2>/dev/null; then
+    # No upstream yet (fresh branch/empty remote) or rejected — set upstream / retry.
+    if ! git -C "$DIR" push -u origin HEAD 2>/dev/null; then
+      git -C "$DIR" pull --rebase --autostash
+      git -C "$DIR" push
+    fi
   fi
 fi
 echo "task-tx.sh: committed '$MSG' (${#PATHS[@]} path(s))"

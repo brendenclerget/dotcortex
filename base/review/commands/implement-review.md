@@ -102,6 +102,8 @@ The verdict lands in the `-o` file; read it from there (stdout also streams the 
   > "${TMPDIR:-/tmp}/implement-review-$ARGUMENTS-verdict.md"
 ```
 
+**Model tier:** `{{REVIEWER_MODEL}}` is the configured default. If the user named a different tier for this run (e.g. "use luna for this one"), substitute it in the dispatch — config sets the default, the user's request wins per run.
+
 Dispatch the reviewer ONCE. If the command itself fails to launch (bad flag, network), fix the invocation and retry — but never send the reviewer a second review round, and never argue with its verdict.
 
 ## Step 6: Record in the ticket

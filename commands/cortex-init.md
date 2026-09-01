@@ -330,7 +330,13 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 **Q17: Cross-model review** (single select)
 - Question: "Enable the cross-model review profile (/fix, /implement-review)? Requires a second model family's CLI."
 - Options: "Yes — configure reviewer now" / "Skip — no review profile"
-- If yes: collect `review.reviewer_cli`, `review.reviewer_model`, `review.coordinator_cli`, `review.coordinator_model`. CLI paths/models are per-machine — write them to `.dotcortex/config.local.json` (gitignored; the renderer overlays it for token values) and leave `config.review` unset in the shared config.
+- If yes, collect the four values. For `review.reviewer_model`, offer the reviewer-family's current tiers rather than assuming one (probe `<reviewer_cli> --help` / the provider's model list where possible; otherwise present the known tiers with an "Other" free-text option), e.g. for an OpenAI-family reviewer:
+  - "gpt-5.6-sol — deepest reasoning; thorough but slow reviews (Recommended for implementation review)"
+  - "gpt-5.6-terra — balanced; good default for routine diffs"
+  - "gpt-5.6-luna — fastest; quick sanity passes only"
+  - "Other — enter any model id"
+  Same pattern for `coordinator_model` (e.g. the Claude family's current tiers). Model ids are free strings — the schema doesn't pin them, so new tiers need no schema change.
+- CLI paths/models are per-machine — write all four to `.dotcortex/config.local.json` (gitignored; the renderer overlays it for token values) and leave `config.review` unset in the shared config. The configured model is the DEFAULT; a user can name a different tier for a single run ("review this with luna") and the command should honor it.
 - If skipped: EXCLUDE the `review` profile from the Phase 4.5 staging (its files contain review tokens that would fail strict rendering).
 
 
