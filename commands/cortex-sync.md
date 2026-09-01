@@ -1,34 +1,18 @@
 ---
 name: cortex-sync
-description: Sync org context (if connected) and rebuild tool views from canonical .dotcortex structure
+description: Pull the team context (if connected) and rebuild tool views via the resolution engine
 ---
 
 # cortex-sync
 
-Synchronize context state and regenerate tool views from canonical `.dotcortex/`.
+Synchronize context state and regenerate views. This command is a thin wrapper — the engine does the work.
 
 ## Steps
 
-1. Read `.dotcortex/config.json`. If missing, stop and instruct user to run `/cortex-init`.
-2. If `config.org` is connected, pull latest in `.dotcortex/org`:
-   - Validate clean or safe-to-pull state.
-   - Run `git pull --ff-only` when possible.
-3. Rebuild `.claude/` view from canonical sources:
-   - `.dotcortex/org/*` (org-global, if connected)
-   - `.dotcortex/org/projects/<project_key>/*` (org project overlay, if connected)
-   - `.dotcortex/*` (local canonical)
-   - Collision order: org-global first, org-project second, local third (local wins).
-   - Preserve `.claude/settings.local.json`.
+1. Read `.dotcortex/config.json`. If missing, stop and instruct the user to run `/cortex-init`.
+2. If `config.context_repo` is set: `.dotcortex/bin/task-tx.sh --dir .dotcortex/layers/team --pull-only`
+3. Rebuild: `.dotcortex/bin/rebuild-views.sh --root <project-root>` — resolves org→team (team wins, overrides reported) and repoints `.claude/*` + `.agents/skills`. Do not re-describe or re-implement resolution here.
 4. Ensure `.tasks -> .dotcortex/tasks`.
-5. Rebuild selected tool views from `config.tools`:
-   - `.agents/skills/`
-   - `.gemini/skills/`
-   - `.cursor/rules/*.mdc` (if supported/enabled)
-6. Report changes and any conflicts/skipped files.
-
-## Notes
-
-- If symlinks are disabled (`config.symlinks = false`), rebuild copies instead of symlinks and warn the user about potential drift.
-- This command never modifies user-authored content outside managed/rebuild directories.
-
-Arguments: $ARGUMENTS
+5. If `config.task_repo` is set, also pull the task checkout: `.dotcortex/bin/task-tx.sh --dir .dotcortex/task-repo --pull-only`
+6. Reload team policy if it changed (same as `/context sync` step 3).
+7. Report: what was pulled, overrides in effect (OVERRIDE lines from the engine), and stale overrides — evaluated by grepping each overriding team file's frontmatter for `based_on_org_version:` and comparing to `install-info.json.dotcortex_version` (older = stale; absent = unversioned deliberate override).

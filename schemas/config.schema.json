@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "dotcortex project config",
+  "type": "object",
+  "required": ["schema_version", "config"],
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "source": { "type": "string" },
+    "installed_at": { "type": "string" },
+    "updated_at": { "type": "string" },
+    "config": {
+      "type": "object",
+      "required": ["prefix", "tasks_dir", "profiles", "workflow_policy", "linear"],
+      "properties": {
+        "prefix": { "type": "string", "pattern": "^[A-Z][A-Z0-9]{1,9}$" },
+        "tasks_dir": { "type": "string", "minLength": 1 },
+        "project_name": { "type": "string" },
+        "component_repos": { "type": "array", "items": { "type": "string" } },
+        "profiles": { "type": "array", "items": { "type": "string" } },
+        "tools": { "type": "array", "items": { "enum": ["claude", "codex", "gemini", "cursor"] } },
+        "task_repo": {
+          "type": "object",
+          "required": ["url", "checkout_path", "branch", "team_key", "project_key"],
+          "properties": {
+            "url": { "type": "string" },
+            "checkout_path": { "type": "string" },
+            "branch": { "type": "string" },
+            "team_key": { "type": "string" },
+            "project_key": { "type": "string" }
+          }
+        },
+        "context_repo": {
+          "type": "object",
+          "required": ["url", "checkout_path", "branch", "team_key"],
+          "properties": {
+            "url": { "type": "string" },
+            "checkout_path": { "type": "string" },
+            "branch": { "type": "string" },
+            "team_key": { "type": "string" }
+          }
+        },
+        "workflow_policy": {
+          "type": "object",
+          "description": "Team-scoped behavior policy. Inherited from the team context when connected; interviewed only at team creation. Values are single resolved tokens. All seven fields required — init always writes a complete policy.",
+          "required": ["test_authoring", "test_execution", "server_lifecycle", "endpoint_probing", "documentation_creation", "ticket_creation", "ticket_close"],
+          "properties": {
+            "test_authoring": { "enum": ["allowed", "ask"] },
+            "test_execution": { "enum": ["allowed", "ask", "user_only"] },
+            "server_lifecycle": { "enum": ["allowed", "ask", "user_only"] },
+            "endpoint_probing": { "enum": ["allowed", "ask", "user_only"] },
+            "documentation_creation": { "enum": ["allowed", "ask"] },
+            "ticket_creation": { "enum": ["proactive", "followups_only", "explicit_only"] },
+            "ticket_close": { "enum": ["auto", "ask"] }
+          },
+          "additionalProperties": false
+        },
+        "review": {
+          "type": "object",
+          "description": "Cross-model review executables. Team policy decides WHETHER review runs; these values live in gitignored .dotcortex/config.local.json (CLI paths/models are per-machine — the renderer overlays that file). All four required when present.",
+          "required": ["reviewer_cli", "reviewer_model", "coordinator_cli", "coordinator_model"],
+          "properties": {
+            "reviewer_cli": { "type": "string", "minLength": 1 },
+            "reviewer_model": { "type": "string", "minLength": 1 },
+            "coordinator_cli": { "type": "string", "minLength": 1 },
+            "coordinator_model": { "type": "string", "minLength": 1 }
+          }
+        },
+        "linear": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": { "enabled": { "type": "boolean" } }
+        },
+        "task_remote": { "type": "boolean" },
+        "task_storage": { "enum": ["same_repo", "gitignored", "separate_repo"] },
+        "symlinks": { "type": "boolean" },
+        "git_autonomy": { "enum": ["manual", "commit", "commit_push", "commit_push_pr"] }
+      }
+    },
+    "managed_files": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["sha256", "base_version", "source"],
+        "properties": {
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "base_version": { "type": "string" },
+          "source": { "type": "string" }
+        }
+      }
+    }
+  }
+}

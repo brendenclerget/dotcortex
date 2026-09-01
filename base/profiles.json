@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "core": {
+      "description": "Instruction scaffolds, commit workflow. Always installed.",
+      "paths": ["core/"],
+      "enabled": true,
+      "required": true
+    },
+    "pm": {
+      "description": "Ticket system: pm-agent, ticket commands, TODO queue, templates, backlog validation.",
+      "paths": ["pm/"],
+      "enabled": true
+    },
+    "review": {
+      "description": "/fix verify-before-fix loop and cross-model implementation review.",
+      "paths": ["review/"],
+      "enabled": true
+    },
+    "testing": {
+      "description": "Maestro mobile UI automation skill.",
+      "paths": ["packs/testing/"],
+      "enabled": false
+    },
+    "design": {
+      "description": "/design-implement: code-first design parity from in-repo design artifacts.",
+      "paths": ["packs/design/"],
+      "enabled": false
+    },
+    "launch-planning": {
+      "description": "MVP scoping and execution-lane planning (future pack; /mvp + /mvp-execute pending consolidation).",
+      "paths": ["packs/launch-planning/"],
+      "enabled": false
+    }
+  }
+}

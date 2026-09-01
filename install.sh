@@ -34,19 +34,22 @@ EOF
 }
 
 detect_dotcortex_version() {
+  # One version namespace everywhere: the exact release tag when the checkout
+  # sits on one, otherwise an explicit "untagged-<sha>" marker. cortex-update
+  # compares this same field against remote release tags.
   local version
 
-  if version="$(git -C "$DOTCORTEX_DIR" describe --tags --abbrev=0 2>/dev/null)"; then
+  if version="$(git -C "$DOTCORTEX_DIR" describe --tags --exact-match 2>/dev/null)"; then
     echo "$version"
     return 0
   fi
 
   if version="$(git -C "$DOTCORTEX_DIR" rev-parse --short HEAD 2>/dev/null)"; then
-    echo "$version"
+    echo "untagged-$version"
     return 0
   fi
 
-  echo "dev"
+  echo "unversioned"
 }
 
 read_json_value() {
@@ -100,6 +103,7 @@ write_install_metadata() {
   "last_migrated_at": "$now_utc",
   "updated_on": "$now_date",
   "install_mode": "$INSTALL_MODE",
+  "source_checkout": $(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$DOTCORTEX_DIR"),
   "migration_state_dir": ".dotcortex/.migrations"
 }
 EOF
@@ -224,18 +228,92 @@ mkdir -p "$TARGET_DIR/.dotcortex/.migrations"
 
 run_migrations
 
-# Ensure canonical/bootstrap paths exist after migration checks.
-mkdir -p "$TARGET_DIR/.dotcortex/commands"
-mkdir -p "$TARGET_DIR/.claude/commands"
+# Install the deterministic engine + schema into the project so rendered
+# projects never depend on finding the source checkout for these.
+mkdir -p "$TARGET_DIR/.dotcortex/bin" "$TARGET_DIR/.dotcortex/schemas"
+cp "$DOTCORTEX_DIR/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/render.sh"
+cp "$DOTCORTEX_DIR/bin/rebuild-views.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh"
+cp "$DOTCORTEX_DIR/bin/task-tx.sh" "$TARGET_DIR/.dotcortex/bin/task-tx.sh"
+cp "$DOTCORTEX_DIR/schemas/config.schema.json" "$TARGET_DIR/.dotcortex/schemas/config.schema.json"
+chmod +x "$TARGET_DIR/.dotcortex/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh" "$TARGET_DIR/.dotcortex/bin/task-tx.sh"
 
-# Copy bootstrap commands to canonical location
-cp "$DOTCORTEX_DIR/commands/cortex-init.md" "$TARGET_DIR/.dotcortex/commands/cortex-init.md"
-cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$TARGET_DIR/.dotcortex/commands/cortex-update.md"
+# Bootstrap commands: BEFORE init, .dotcortex/commands is a plain dir — install
+# there. AFTER init, .dotcortex/commands is a generated resolved view and the
+# org layer is the canonical home — install there instead (the view links it).
+if [ -d "$TARGET_DIR/.dotcortex/layers/org/commands" ]; then
+  BOOTSTRAP_DEST="$TARGET_DIR/.dotcortex/layers/org/commands"
+  echo "Layers:    detected — bootstrap commands go to layers/org/commands."
+else
+  BOOTSTRAP_DEST="$TARGET_DIR/.dotcortex/commands"
+  mkdir -p "$BOOTSTRAP_DEST"
+fi
+cp "$DOTCORTEX_DIR/commands/cortex-init.md" "$BOOTSTRAP_DEST/cortex-init.md"
+cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$BOOTSTRAP_DEST/cortex-update.md"
 
-# Rebuild minimal symlink view for bootstrap commands
-rm -f "$TARGET_DIR/.claude/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
-ln -s "../../.dotcortex/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-init.md"
-ln -s "../../.dotcortex/commands/cortex-update.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+# When installing into the org layer, re-resolve views so the (possibly new)
+# bootstrap files appear in .dotcortex/commands and the tool views.
+if [ -d "$TARGET_DIR/.dotcortex/layers/org/commands" ]; then
+  "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh" --root "$TARGET_DIR"
+  echo ""
+  echo "NOTE: this refreshed bootstrap commands + engine only. The rendered"
+  echo "payload still carries its previous base_version — run /cortex-update"
+  echo "to bring managed files to $DOTCORTEX_VERSION."
+fi
+
+# Rebuild minimal symlink view for bootstrap commands.
+#
+# CRITICAL: if .claude/commands is a directory symlink into .dotcortex/commands
+# (the post-init state), the view already exposes the canonical files — and
+# writing "through" it would delete the canonical copies we just installed.
+# Never write through a directory symlink. Verify the target:
+#   - resolves to .dotcortex/commands -> valid view, nothing to do
+#   - broken (dangling)              -> leftover damage: repair it
+#   - resolves somewhere else        -> unknown custom setup: abort, touch nothing
+NEED_FILE_LINKS=1
+if [ -L "$TARGET_DIR/.claude/commands" ]; then
+  EXPECTED_TARGET="$(cd "$TARGET_DIR/.dotcortex/commands" && pwd -P)"
+  # ENOENT -> repairable; EACCES/ELOOP/etc -> unexpected, abort untouched.
+  LINK_STATE="$(python3 -c '
+import os, sys
+try:
+    os.stat(sys.argv[1]); print("exists")
+except FileNotFoundError:
+    print("missing")
+except OSError:
+    print("unknown")' "$TARGET_DIR/.claude/commands")"
+  if [ "$LINK_STATE" = "missing" ]; then
+    # Truly dangling (target does not exist): safe to repair.
+    echo "View:      .claude/commands is a BROKEN symlink — repairing."
+    rm -f "$TARGET_DIR/.claude/commands"
+  elif [ "$LINK_STATE" = "unknown" ]; then
+    echo "Error: cannot verify target of .claude/commands symlink (permission/loop):" >&2
+    echo "  $(readlink "$TARGET_DIR/.claude/commands")" >&2
+    echo "Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+    exit 1
+  else
+    # Target exists — only an accessible directory resolving to the expected
+    # path is valid; a file target or inaccessible dir aborts untouched.
+    ACTUAL_TARGET=""
+    if [ -d "$TARGET_DIR/.claude/commands" ]; then
+      ACTUAL_TARGET="$(cd "$TARGET_DIR/.claude/commands" 2>/dev/null && pwd -P || true)"
+    fi
+    if [ "$ACTUAL_TARGET" = "$EXPECTED_TARGET" ]; then
+      echo "View:      .claude/commands is a directory symlink to .dotcortex/commands — bootstrap commands already exposed."
+      NEED_FILE_LINKS=0
+    else
+      echo "Error: .claude/commands is a symlink to an unexpected target:" >&2
+      echo "  $(readlink "$TARGET_DIR/.claude/commands") (expected to resolve to $EXPECTED_TARGET)" >&2
+      echo "Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+      exit 1
+    fi
+  fi
+fi
+if [ "$NEED_FILE_LINKS" -eq 1 ]; then
+  mkdir -p "$TARGET_DIR/.claude/commands"
+  rm -f "$TARGET_DIR/.claude/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+  ln -s "../../.dotcortex/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-init.md"
+  ln -s "../../.dotcortex/commands/cortex-update.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+fi
 
 write_install_metadata
 

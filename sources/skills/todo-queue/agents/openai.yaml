@@ -1,0 +1,4 @@
+interface:
+  display_name: "TODO Queue"
+  short_description: "Maintain the ordered {{PROJECT_NAME}} work queue"
+  default_prompt: "Use $todo-queue to show, append, reorder, or reconcile the project TODO queue."
