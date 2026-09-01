@@ -299,7 +299,7 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 
 **Q13: Team context connection** (only if Q5a = org_connected)
 - Question: "Connect to a team context repo (shared skills/commands/knowledge/policy)?"
-- On connect, **record the answer now, execute later**: the `/context add` flow (clone, contract check, policy inheritance, gitignore, rebuild) requires `config.json` and runs in Phase 4.6b — AFTER config is written (4.9 runs first in the generation order) and after generated project content lands in the local layer, so the merge-local-content path applies. Do not clone during the interview.
+- On connect, **record the answer now, execute later**: do not clone during the interview. For an EXISTING team repo, the clone + policy inheritance run at the TOP of Phase 4.5 (before config write/render — the schema-required policy needs its source); the remaining steps (config pointer, gitignore, content merge, rebuild) complete in Phase 4.6b.
 - Header: "Org repo"
 - Options:
   - "Select existing repo (discover via gh)"
