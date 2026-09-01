@@ -1,22 +1,25 @@
 #!/usr/bin/env bash
 # Deterministic asset renderer.
 #
-# Copies every file under --source into --dest, substituting {{TOKEN}} values
-# taken from the project config, and records a manifest entry per rendered file
-# (SHA-256 of the rendered output, the base version it came from, and the
-# source-relative path) into the config's managed_files map.
+# Renders every file under --source into --dest, substituting {{TOKEN}} values
+# from the project config, and replaces the config's managed_files map with an
+# exact manifest of this render: per file, the SHA-256 of the rendered bytes,
+# the base version, and a repository-relative source path (so an updater can
+# `git checkout <base_version> -- <source>` to reconstruct the merge base).
 #
-# Byte-preserving: substitution never adds or strips trailing newlines; files
-# that are not valid UTF-8 are copied verbatim with no substitution.
+# Guarantees:
+# - Atomic-by-validation: all rendering happens in memory first; with --strict,
+#   nothing on disk (dest OR config) is touched if any token is unresolved.
+# - Convergent: files recorded in the previous manifest that no longer exist in
+#   the source are deleted from dest; managed_files is replaced, not merged.
+# - Deterministic: sorted traversal, sorted manifest keys — same inputs produce
+#   byte-identical dest trees and config files.
+# - Byte-preserving: substitution never adds/strips trailing newlines; files
+#   that are not valid UTF-8 are copied verbatim with no substitution.
 #
 # Usage:
 #   bin/render.sh --source <asset-dir> --dest <layer-dir> --config <config.json>
 #                 [--base-version <tag>] [--strict]
-#
-#   --base-version  defaults to `git describe --tags --exact-match` of the
-#                   source checkout, else "untagged-<shortsha>".
-#   --strict        fail (exit 1) if any {{TOKEN}} in a source file has no
-#                   value in config; default is to leave it intact and warn.
 set -euo pipefail
 
 SOURCE="" DEST="" CONFIG="" BASE_VERSION="" STRICT=0
@@ -47,7 +50,17 @@ if [ -z "$BASE_VERSION" ]; then
   fi
 fi
 
-SOURCE="$SOURCE" DEST="$DEST" CONFIG="$CONFIG" BASE_VERSION="$BASE_VERSION" STRICT="$STRICT" \
+# Repository-relative prefix for source identity (empty if not in a git repo).
+SOURCE_ABS="$(cd "$SOURCE" && pwd -P)"
+if repo_root="$(git -C "$SOURCE" rev-parse --show-toplevel 2>/dev/null)"; then
+  SOURCE_PREFIX="${SOURCE_ABS#"$repo_root"}"
+  SOURCE_PREFIX="${SOURCE_PREFIX#/}"
+else
+  SOURCE_PREFIX=""
+fi
+
+SOURCE="$SOURCE_ABS" DEST="$DEST" CONFIG="$CONFIG" BASE_VERSION="$BASE_VERSION" \
+STRICT="$STRICT" SOURCE_PREFIX="$SOURCE_PREFIX" \
 python3 - <<'PYEOF'
 import hashlib, json, os, re, sys
 
@@ -56,10 +69,12 @@ dest = os.environ["DEST"]
 config_path = os.environ["CONFIG"]
 base_version = os.environ["BASE_VERSION"]
 strict = os.environ["STRICT"] == "1"
+source_prefix = os.environ["SOURCE_PREFIX"]
 
 with open(config_path) as f:
     config = json.load(f)
 cfg = config.get("config", config)
+review = cfg.get("review", {})
 
 def join_list(v):
     return ", ".join(v) if isinstance(v, list) else v
@@ -69,22 +84,22 @@ TOKEN_VALUES = {
     "TASKS_DIR": cfg.get("tasks_dir"),
     "PROJECT_NAME": cfg.get("project_name"),
     "COMPONENT_REPOS": join_list(cfg.get("component_repos")),
+    "REVIEWER_CLI": review.get("reviewer_cli"),
+    "REVIEWER_MODEL": review.get("reviewer_model"),
+    "COORDINATOR_CLI": review.get("coordinator_cli"),
+    "COORDINATOR_MODEL": review.get("coordinator_model"),
 }
 TOKEN_VALUES = {k: v for k, v in TOKEN_VALUES.items() if v is not None}
-
 token_re = re.compile(r"\{\{([A-Z0-9_]+)\}\}")
-manifest = config.setdefault("managed_files", {})
-unresolved = {}
-rendered = 0
 
+# ---- Pass 1: render everything in memory; nothing on disk is touched yet ----
+outputs = {}      # rel -> rendered bytes
+unresolved = {}   # rel -> [tokens]
 for root, dirs, files in os.walk(source):
-    dirs[:] = [d for d in dirs if d != ".git"]
+    dirs[:] = sorted(d for d in dirs if d != ".git")
     for name in sorted(files):
         src_path = os.path.join(root, name)
         rel = os.path.relpath(src_path, source)
-        out_path = os.path.join(dest, rel)
-        os.makedirs(os.path.dirname(out_path), exist_ok=True)
-
         with open(src_path, "rb") as f:
             raw = f.read()
         try:
@@ -97,24 +112,45 @@ for root, dirs, files in os.walk(source):
             ).encode("utf-8")
         except UnicodeDecodeError:
             out = raw  # non-UTF8: copy verbatim
+        outputs[rel] = out
 
-        with open(out_path, "wb") as f:
-            f.write(out)
-        manifest[rel] = {
-            "sha256": hashlib.sha256(out).hexdigest(),
-            "base_version": base_version,
-            "source": rel,
-        }
-        rendered += 1
+if unresolved:
+    for rel in sorted(unresolved):
+        print(f"render.sh: UNRESOLVED tokens in {rel}: {', '.join(unresolved[rel])}",
+              file=sys.stderr)
+    if strict:
+        print("render.sh: --strict: aborting before writing anything.", file=sys.stderr)
+        sys.exit(1)
 
+# ---- Pass 2: write dest, remove stale files, replace manifest ----
+new_manifest = {}
+for rel in sorted(outputs):
+    out_path = os.path.join(dest, rel)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "wb") as f:
+        f.write(outputs[rel])
+    new_manifest[rel] = {
+        "sha256": hashlib.sha256(outputs[rel]).hexdigest(),
+        "base_version": base_version,
+        "source": os.path.join(source_prefix, rel) if source_prefix else rel,
+    }
+
+stale = sorted(set(config.get("managed_files", {})) - set(new_manifest))
+for rel in stale:
+    path = os.path.join(dest, rel)
+    if os.path.isfile(path):
+        os.remove(path)
+        d = os.path.dirname(path)
+        while d != dest and os.path.isdir(d) and not os.listdir(d):
+            os.rmdir(d)
+            d = os.path.dirname(d)
+    print(f"render.sh: removed stale rendered file: {rel}")
+
+config["managed_files"] = new_manifest
 with open(config_path, "w") as f:
-    json.dump(config, f, indent=2)
+    json.dump(config, f, indent=2, sort_keys=False)
     f.write("\n")
 
-print(f"render.sh: rendered {rendered} files -> {dest} (base_version {base_version})")
-if unresolved:
-    for rel, tokens in unresolved.items():
-        print(f"render.sh: UNRESOLVED tokens in {rel}: {', '.join(tokens)}", file=sys.stderr)
-    if strict:
-        sys.exit(1)
+print(f"render.sh: rendered {len(new_manifest)} files -> {dest} "
+      f"(base_version {base_version}, {len(stale)} stale removed)")
 PYEOF

@@ -27,7 +27,7 @@ If none exist, stop and tell the user to run `/cortex-init` first.
 
 Extract:
 - `source` — GitHub repo URL
-- `version` — currently installed version tag
+- **Installed version** — read `dotcortex_version` from `.dotcortex/install-info.json` (the canonical version field; `.dotcortex/version` mirrors it; config.json does not store a version)
 - `config.prefix` — ticket prefix (e.g., "APP")
 - `config.tools` — enabled tool views (e.g., `["claude", "codex"]`)
 - `config.structure_mode` — `single_project` or `org_connected`
@@ -74,17 +74,22 @@ The installed version is `dotcortex_version` in `install-info.json` (the same va
 
 Each `managed_files` entry records `{sha256, base_version, source}` — written by `bin/render.sh` at install time. `base_version` is the exact tag the file was rendered from, so the true installed base is always retrievable (`git checkout <base_version> -- <source>` in the temp clone) for a real three-way merge.
 
-For each file in `managed_files`:
+**Never mutate live state during comparison.** Copy `.dotcortex/config.json` to a temp path first; all candidate renders below use `--config <temp copy>` so the live `managed_files` is untouched until Step 6 applies decisions.
 
-1. **Render the new upstream version** with `bin/render.sh` (from the checked-out tag; `{{TOKEN}}` substitution from config — see the renderer for the token map).
+For each file in `managed_files` (each entry is `{sha256, base_version, source}`, where `source` is the repository-relative path render.sh recorded):
 
-2. **Determine what changed:**
+1. **Render the NEW candidate:** `bin/render.sh` from the checked-out `$LATEST_TAG` into a temp dest, using the temp config.
+
+2. **Reconstruct the BASE (the rendered bytes that produced `installed_hash`):** in the temp clone, `git checkout <base_version> -- <source>`, then render *that* with the temp config into a second temp dest. The base for merging is this **rendered** output — never the raw tokenized source.
+
+3. **Determine what changed:**
 
 ```
 installed_hash = managed_files[path].sha256   # what we installed last time
 current_hash   = sha256(user's current file)  # what's on disk now
-new_hash       = sha256(new rendered file)    # what upstream looks like now
-base_file      = source file at managed_files[path].base_version  # merge base
+new_hash       = sha256(new rendered candidate)
+base_file      = rendered base (step 2) — sha256(base_file) must equal installed_hash;
+                 if it doesn't, warn and treat as conflict (manifest drift)
 ```
 
 4. **Decide action:**
@@ -107,7 +112,15 @@ For each new file:
 
 ### Step 5: Handle Conflicts
 
-For each conflict (both upstream and user changed):
+For each conflict (both upstream and user changed), **attempt a real three-way merge first**:
+
+```bash
+# current = user's file, base = rendered base from Step 3.2, new = rendered candidate
+git merge-file -p <current> <base> <new> > <merged> && CLEAN=1 || CLEAN=0
+```
+
+- **Clean merge** (`CLEAN=1`): apply `<merged>`, report it as "merged (upstream + your changes)" in the summary. No prompt needed.
+- **Merge conflicts**: fall through to the interactive prompt below.
 
 Present to the user:
 ```
@@ -137,13 +150,15 @@ For each file being updated (auto-updates + user-approved overwrites):
 1. Write the new rendered version to disk
 2. Update the checksum in `managed_files`
 
-### Step 7: Update Config
+### Step 7: Update Version + Config
+
+One canonical version write path — the same fields install.sh writes, so the next update reads what this one wrote:
+- `.dotcortex/install-info.json`: set `dotcortex_version` to `$LATEST_TAG`, set `previous_dotcortex_version`, `updated_at`, `updated_on`
+- `.dotcortex/version`: write `$LATEST_TAG` (mirror)
 
 Update `.dotcortex/config.json`:
-- Set `version` to the new tag
 - Set `updated_at` to today's date
-- Update `managed_files` with new checksums for all updated files
-- Add entries for any newly installed files
+- Update `managed_files`: new `{sha256, base_version: $LATEST_TAG, source}` entries for every applied file (config.json does **not** store a version field)
 
 ### Step 8: Clean Up and Report
 
@@ -182,39 +197,19 @@ The update command needs to know which dotcortex source file maps to which insta
 | `skills/*/SKILL.md` | `.dotcortex/skills/*/SKILL.md` |
 | `templates/*.md` | `.dotcortex/tasks/templates/*.md` |
 
-### Step 9: Sync Multi-Tool Files
+### Step 9: Rebuild Views
 
-Always rebuild tool views from canonical `.dotcortex` content after updates.
+Layer resolution and tool views have exactly one engine — run it:
 
-1. Rebuild `.claude/` view from canonical sources:
-   - `.dotcortex/org/*` (org-global, if connected)
-   - `.dotcortex/org/projects/<project_key>/*` (org project overlay, if connected)
-   - `.dotcortex/*` (local canonical)
-   - Preserve `.claude/settings.local.json` as real file
-   - Rebuild managed directories: `commands/`, `skills/`, `knowledge/`, `memory/`
-   - Use collision order: org-global first, org-project second, local third (local wins)
-2. Ensure `.tasks` points to `.dotcortex/tasks`
-3. Rebuild other selected tools from `.dotcortex/skills`
-
-**For each tool in `config.tools`:**
-
-| Tool | Action |
-|------|--------|
-| `codex` | Regenerate `AGENTS.md` from `CLAUDE.md`. Rebuild `.agents/skills/` symlinks — remove stale ones, create new ones for any added skills. |
-| `gemini` | Regenerate `GEMINI.md` from `CLAUDE.md`. Rebuild `.gemini/skills/` symlinks — same approach. |
-| `cursor` | Regenerate `AGENTS.md` if not already done for Codex. Rebuild `.cursor/rules/*.mdc` files from current `.dotcortex/skills/*/SKILL.md` — delete `.mdc` files for removed skills, create new ones for added skills. |
-
-**Symlink rebuild process:**
 ```bash
-# Remove all existing symlinks in target skills dir (don't touch non-symlink files)
-find .agents/skills -type l -delete 2>/dev/null
-
-# Recreate symlinks for each current skill
-for skill_dir in .dotcortex/skills/*/; do
-  skill_name=$(basename "$skill_dir")
-  ln -s "../../.dotcortex/skills/$skill_name" ".agents/skills/$skill_name"
-done
+bin/rebuild-views.sh --root <project-root>
 ```
+
+It resolves `layers/org` → `layers/team` (team wins, overrides reported) into the `.dotcortex/` resolved directories and points the `.claude/`/`.agents/` views at them. Do not re-describe or re-implement any of that here.
+
+Afterwards:
+1. Ensure `.tasks` points to `.dotcortex/tasks`
+2. Tool-specific regeneration for each tool in `config.tools`: `codex` → regenerate `AGENTS.md` from `CLAUDE.md`; `gemini` → regenerate `GEMINI.md`; `cursor` → regenerate `.cursor/rules/*.mdc` from current skills
 
 Report any tool-specific files updated in the Step 8 summary.
 
@@ -222,7 +217,7 @@ Report any tool-specific files updated in the Step 8 summary.
 
 - **User deleted a managed file:** Ask "This file was removed. Reinstall from upstream? / Skip"
 - **dotcortex repo unreachable:** Report error, suggest checking network or repo URL
-- **No git tags on upstream:** Use commit hash as version identifier instead
+- **No git tags on upstream:** Abort with "No release tags upstream" (per Step 2) — never update from untagged branch HEAD
 - **Config file corrupted:** Offer to re-run `/cortex-init` in repair mode
 - **Tool added/removed since init:** If `config.tools` changed, run the appropriate setup/cleanup from Phase 4.8 of cortex-init
 - **Symlink-incompatible environment:** use configured fallback mode (`symlinks: false`) and warn that view copies can drift

@@ -236,14 +236,31 @@ cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$TARGET_DIR/.dotcortex/commands/c
 
 # Rebuild minimal symlink view for bootstrap commands.
 #
-# CRITICAL: if .claude/commands is already a directory symlink into
-# .dotcortex/commands (the post-init state), the whole view already exposes
-# the canonical files — and writing "through" it would delete the canonical
-# copies we just installed, then leave broken self-referential links behind.
-# Never write through an existing directory symlink.
+# CRITICAL: if .claude/commands is a directory symlink into .dotcortex/commands
+# (the post-init state), the view already exposes the canonical files — and
+# writing "through" it would delete the canonical copies we just installed.
+# Never write through a directory symlink. Verify the target:
+#   - resolves to .dotcortex/commands -> valid view, nothing to do
+#   - broken (dangling)              -> leftover damage: repair it
+#   - resolves somewhere else        -> unknown custom setup: abort, touch nothing
+NEED_FILE_LINKS=1
 if [ -L "$TARGET_DIR/.claude/commands" ]; then
-  echo "View:      .claude/commands is a directory symlink — bootstrap commands already exposed."
-else
+  EXPECTED_TARGET="$(cd "$TARGET_DIR/.dotcortex/commands" && pwd -P)"
+  ACTUAL_TARGET="$(cd "$TARGET_DIR/.claude/commands" 2>/dev/null && pwd -P || true)"
+  if [ "$ACTUAL_TARGET" = "$EXPECTED_TARGET" ]; then
+    echo "View:      .claude/commands is a directory symlink to .dotcortex/commands — bootstrap commands already exposed."
+    NEED_FILE_LINKS=0
+  elif [ -z "$ACTUAL_TARGET" ]; then
+    echo "View:      .claude/commands is a BROKEN symlink — repairing."
+    rm -f "$TARGET_DIR/.claude/commands"
+  else
+    echo "Error: .claude/commands is a symlink to an unexpected location:" >&2
+    echo "  $ACTUAL_TARGET (expected $EXPECTED_TARGET)" >&2
+    echo "Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+    exit 1
+  fi
+fi
+if [ "$NEED_FILE_LINKS" -eq 1 ]; then
   mkdir -p "$TARGET_DIR/.claude/commands"
   rm -f "$TARGET_DIR/.claude/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
   ln -s "../../.dotcortex/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-init.md"
