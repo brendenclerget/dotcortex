@@ -247,8 +247,9 @@ else
   BOOTSTRAP_DEST="$TARGET_DIR/.dotcortex/commands"
   mkdir -p "$BOOTSTRAP_DEST"
 fi
-cp "$DOTCORTEX_DIR/commands/cortex-init.md" "$BOOTSTRAP_DEST/cortex-init.md"
-cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$BOOTSTRAP_DEST/cortex-update.md"
+for c in cortex-init cortex-update init-org init-team init-project; do
+  cp "$DOTCORTEX_DIR/commands/$c.md" "$BOOTSTRAP_DEST/$c.md"
+done
 
 # When installing into the org layer, re-resolve views so the (possibly new)
 # bootstrap files appear in .dotcortex/commands and the tool views.

@@ -43,7 +43,17 @@ git clone https://github.com/brendenclerget/dotcortex.git ~/dotcortex
 /cortex-init
 ```
 
-The init interview configures your ticket prefix, task storage, workflow policy, and optional integrations, then renders the base through the deterministic pipeline and generates the project-specific pieces (CLAUDE.md, stack skills, knowledge scaffolds).
+Solo? `/cortex-init` interviews you and sets everything up standalone.
+
+**Org?** Three commands, one shared org repo (your teams' context + all markdown tasks, pulled into everyone's code folder — dotcortex itself is just the tool):
+
+```
+/init-org                     # first time: create (or clone) the org repo
+/init-team payments           # scaffold a team: context dirs, policy, prefix (registry-checked)
+/init-project payments api    # wire THIS workspace: inherit policy, render, connect tasks
+```
+
+A teammate onboards by cloning the org repo and running `/init-project` in their workspace. That's it.
 
 Re-running `install.sh` on an existing project refreshes the engine, schema, and bootstrap commands only — rendered content updates via `/cortex-update` (which checks out the exact latest release tag and does a true three-way merge against what you originally installed, so your local edits survive).
 
@@ -146,6 +156,7 @@ File-based tickets in git. No external tools required — and **Linear-aware** w
 | `/fix` | Paste another agent's review findings — each is **verified against the tree** (CONFIRMED/STALE/REJECTED) before anything is fixed |
 | `/implement-review <id>` | Implement, then one-shot **cross-model review** (your work reviewed by the other model family — never by itself; reported SKIPPED if no second family is configured) |
 | `/commit` | Multi-repo-aware commit workflow |
+| `/init-org` · `/init-team` · `/init-project` | Org/team/project onboarding (see Quick Start) |
 | `/context add|sync|remove` | Connect this project to your team's context repo |
 | `/cortex-sync` | Pull team context + rebuild views |
 | `/cortex push skill|command|knowledge <name>` | Promote a team asset into the org base via branch + PR |
