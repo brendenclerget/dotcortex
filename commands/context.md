@@ -15,7 +15,7 @@ Supported subcommands:
 ## /context add <repo-url>
 
 1. Validate `.dotcortex/config.json` exists (else: run `/cortex-init` first).
-2. Clone `<repo-url>` into `.dotcortex/layers/team/` (abort if that path already exists and is not empty).
+2. If `.dotcortex/layers/team/` already exists with LOCAL content (init generates project skills/knowledge/memory there), move it aside (`layers/team-local.bak/`), clone `<repo-url>` into `.dotcortex/layers/team/`, then offer to carry the local content INTO the team repo (copy + one scoped commit via task-tx.sh per category) or leave it in the .bak for manual triage — never silently discard it. If the path is empty/absent, just clone.
 3. Sanity-check the contract: the checkout should contain some of `commands/`, `skills/`, `knowledge/`, `templates/`, `policy/`, `memory/`. Warn (don't abort) on an empty repo — a brand-new team starts empty.
 4. Write `config.context_repo = {url, checkout_path: ".dotcortex/layers/team", branch: <default branch>, team_key}`.
 5. If the team's `policy/workflow_policy.json` exists, **inherit it**: overwrite `config.workflow_policy` with the team values (team policy wins; note the change to the user).

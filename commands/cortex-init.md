@@ -339,6 +339,14 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 - CLI paths/models are per-machine — write all four to `.dotcortex/config.local.json` (gitignored; the renderer overlays it for token values) and leave `config.review` unset in the shared config. The configured model is the DEFAULT; a user can name a different tier for a single run ("review this with luna") and the command should honor it.
 - If skipped: EXCLUDE the `review` profile from the Phase 4.5 staging (its files contain review tokens that would fail strict rendering).
 
+**Q18: Optional packs** (multi-select)
+- Question: "Install optional packs?"
+- Options:
+  - "testing — Maestro mobile UI automation skill"
+  - "design — /design-implement code-first design parity"
+  - "None"
+- Selected packs join the Phase 4.5 staging and `config.profiles`. (`launch-planning` is future/disabled and is NOT offered.)
+
 
 ## Phase 3: Stack Research & Skill Generation
 
@@ -420,15 +428,17 @@ Generate at the project root. Include:
 Destructive git operations (`git checkout -- <file>`, `git reset --hard`, `git restore`, `git clean -f`) can silently discard uncommitted work from other sessions or agents. Always explain what will be lost and get explicit confirmation before running any command that discards local changes.
 ```
 
-### 4.2: `.dotcortex/memory/MEMORY.md`
+### 4.2: Memory — `.dotcortex/layers/team/memory/MEMORY.md`
 
-Generate in `.dotcortex/memory/`. Include:
+**Generated content NEVER goes into the resolved-view directories** (`.dotcortex/{skills,knowledge,memory}` are generated symlink views — the rebuilder aborts on regular files found inside them). All generated project context goes into the **team/local layer** (`.dotcortex/layers/team/` — "your layer"; it exists locally even with no team remote) and is published by the Phase 4.6 rebuild.
+
+Generate in `.dotcortex/layers/team/memory/`. Include:
 - Repository layout table (from scan — directories, what they contain)
 - Workflow preferences (from Q4)
 - Knowledge base index table (pointing to all generated knowledge files with "when to read" guidance)
 - Empty "Hot Context" section
 
-### 4.3: `.dotcortex/knowledge/` files
+### 4.3: Knowledge — `.dotcortex/layers/team/knowledge/` files (published to `.dotcortex/knowledge/` by the rebuild)
 
 **Always create:**
 - `architecture-decisions.md` — Header + "No entries yet" placeholder
@@ -452,7 +462,7 @@ _No entries yet._
 
 ### 4.4: Domain skills
 
-Write each generated skill to `.dotcortex/skills/[skill-name]/SKILL.md`.
+Write each generated skill to `.dotcortex/layers/team/skills/[skill-name]/SKILL.md` (published to `.dotcortex/skills/` by the Phase 4.6 rebuild).
 
 ### 4.5: Base render pipeline (ALL installs) + task system (if Q5 = full PM)
 

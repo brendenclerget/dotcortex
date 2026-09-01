@@ -30,8 +30,7 @@ Extract:
 - **Installed version** — read `dotcortex_version` from `.dotcortex/install-info.json` (the canonical version field; `.dotcortex/version` mirrors it; config.json does not store a version)
 - `config.prefix` — ticket prefix (e.g., "APP")
 - `config.tools` — enabled tool views (e.g., `["claude", "codex"]`)
-- `config.structure_mode` — `single_project` or `org_connected`
-- `config.org` — org settings when connected (`repo`, `project_key`, optional flags)
+- `config.context_repo` — team context connection, when present
 - `managed_files` — map of file paths to checksums of what was installed
 
 ### Step 1b: Legacy Layout Migration
@@ -187,13 +186,7 @@ Skipped (user declined):
 
 ## File Mapping
 
-The update command needs to know which dotcortex source file maps to which installed file. The mapping follows this pattern:
-
-| Localmem source | Installed at |
-|---|---|
-| `commands/*.md` | `.dotcortex/commands/*.md` |
-| `skills/*/SKILL.md` | `.dotcortex/skills/*/SKILL.md` |
-| `templates/*.md` | `.dotcortex/tasks/templates/*.md` |
+`managed_files[].source` (repository-relative, e.g. `base/pm/commands/ticket-new.md`) is the authoritative source mapping for every managed file — recorded by the renderer at install time. There is no static path table.
 
 ### Step 9: Rebuild Views
 

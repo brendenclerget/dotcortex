@@ -121,9 +121,15 @@ Ask: "Should I break this into subtasks?"
 ## Step 5b: The allocation transaction (pure-markdown mode)
 
 With the full draft ready (parent + any letter-child drafts + the BACKLOG row), run
-ONE transaction that allocates the ID and lands everything:
+ONE transaction that allocates the ID and lands everything. **Take the shared
+transaction lock first** — the same lock `task-tx.sh` uses — so parallel sessions on
+this checkout serialize and cannot read the same counter value:
 
 ```bash
+LOCKDIR="$(git -C {{TASKS_DIR}} rev-parse --absolute-git-dir)/dotcortex-tx.lock"
+until mkdir "$LOCKDIR" 2>/dev/null; do sleep 1; done
+trap 'rmdir "$LOCKDIR" 2>/dev/null' EXIT
+
 attempt=0
 until [ $attempt -ge 5 ]; do
   attempt=$((attempt + 1))
@@ -148,16 +154,21 @@ until [ $attempt -ge 5 ]; do
   git -C {{TASKS_DIR}} commit -m "$TICKET: create ticket"
   git -C {{TASKS_DIR}} push && { echo "Created $TICKET"; break; }
 
-  # 5. Push rejected: roll back ONLY this transaction's own artifacts (never a
-  #    tree-wide reset — other sessions' dirty files must survive), then retry
+  # 5. Push rejected: roll back ONLY this transaction's own artifacts, then retry.
+  #    Sanctioned exception to the ask-before-destructive-git rule: the lock is
+  #    held, so no other session can have task-tx work in flight; every path
+  #    below was written by THIS transaction in step 3 and is regenerated on
+  #    the next attempt. Nothing that predates the lock acquisition is touched.
   git -C {{TASKS_DIR}} reset --soft HEAD~1
   git -C {{TASKS_DIR}} restore --staged .ticket_counter BACKLOG.md
   git -C {{TASKS_DIR}} restore --staged "$TICKET_FILE" 2>/dev/null || true   # whichever of the two
   git -C {{TASKS_DIR}} restore --staged "$TICKET/"    2>/dev/null || true   # exists (file vs family)
-  git -C {{TASKS_DIR}} checkout -- .ticket_counter BACKLOG.md   # our edits only; regenerated next attempt
+  git -C {{TASKS_DIR}} checkout -- .ticket_counter BACKLOG.md   # undo OUR step-3 edits only
   rm -rf "{{TASKS_DIR}}/$TICKET_FILE" "{{TASKS_DIR}}/$TICKET"/  # the files WE just created (file OR family folder)
 done
 ```
+
+The `trap` releases the lock when the command finishes (success or failure).
 
 Letter subtasks created here ride inside the same transaction (same family folder,
 same commit) — they consume no counter numbers and never get their own transaction.
