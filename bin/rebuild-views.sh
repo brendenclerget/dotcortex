@@ -93,15 +93,23 @@ ensure_view_link() {
   if [ -L "$view" ]; then
     local expected actual
     expected="$(cd "$expected_dir" && pwd -P)"
-    actual="$(cd "$view" 2>/dev/null && pwd -P || true)"
-    if [ "$actual" = "$expected" ]; then
-      return 0
-    elif [ -z "$actual" ]; then
+    if [ ! -e "$view" ]; then
+      # Truly dangling (target does not exist at all): safe to repair.
       echo "rebuild-views.sh: repairing dangling view symlink: $view"
       rm -f "$view"
     else
-      echo "rebuild-views.sh: ABORT — $view is a symlink to an unexpected location:" >&2
-      echo "  $actual (expected $expected)" >&2
+      # Target exists. Only an accessible DIRECTORY resolving to the expected
+      # path is acceptable; a file target or inaccessible dir is "unexpected",
+      # never "dangling" — abort untouched.
+      actual=""
+      if [ -d "$view" ]; then
+        actual="$(cd "$view" 2>/dev/null && pwd -P || true)"
+      fi
+      if [ "$actual" = "$expected" ]; then
+        return 0
+      fi
+      echo "rebuild-views.sh: ABORT — $view is a symlink to an unexpected target:" >&2
+      echo "  $(readlink "$view") (expected to resolve to $expected)" >&2
       echo "  Refusing to modify it. Fix or remove the symlink, then re-run." >&2
       exit 1
     fi

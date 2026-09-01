@@ -127,6 +127,46 @@ rm "$PRJM/src/c.md"
 bash "$REPO/bin/render.sh" --source "$PRJM/src" --dest "$PRJM/out" --config "$PRJM/cfg.json" --base-version v4 >/dev/null 2>&1
 assert_not "unmodified stale file still deleted" test -e "$PRJM/out/c.md"
 
+# Symlinked-dir escape: a real dir-symlink under dest must not smuggle deletion outside
+PRJS="$WORK/t2-sym"; mkdir -p "$PRJS/src" "$PRJS/out" "$PRJS/outside"
+printf 'safe {{TICKET_PREFIX}}\n' > "$PRJS/src/keep.md"
+printf 'outside victim\n' > "$PRJS/outside/victim.md"
+ln -s "../outside" "$PRJS/out/link"
+cat > "$PRJS/cfg.json" <<'EOF'
+{"config": {"prefix": "APP", "tasks_dir": "t"}}
+EOF
+bash "$REPO/bin/render.sh" --source "$PRJS/src" --dest "$PRJS/out" --config "$PRJS/cfg.json" --base-version v1 >/dev/null 2>&1
+VICTIM_SHA="$(sha "$PRJS/outside/victim.md")"
+python3 - "$PRJS/cfg.json" "$VICTIM_SHA" <<'EOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+c["managed_files"]["link/victim.md"] = {"sha256": sys.argv[2], "base_version": "v0", "source": "x"}
+json.dump(c, open(sys.argv[1], "w"), indent=2)
+EOF
+SYM_ERR="$WORK/t2-sym-err.txt"
+bash "$REPO/bin/render.sh" --source "$PRJS/src" --dest "$PRJS/out" --config "$PRJS/cfg.json" --base-version v1 >/dev/null 2>"$SYM_ERR"
+assert "symlinked-dir escape refused (victim survives)" test -f "$PRJS/outside/victim.md"
+assert "symlinked-dir escape reported" grep -q 'real path escapes dest' "$SYM_ERR"
+
+# Alias key: sub/../a.md must never delete the managed a.md
+PRJA="$WORK/t2-alias"; mkdir -p "$PRJA/src" "$PRJA/out"
+printf 'a {{TICKET_PREFIX}}\n' > "$PRJA/src/a.md"
+cat > "$PRJA/cfg.json" <<'EOF'
+{"config": {"prefix": "APP", "tasks_dir": "t"}}
+EOF
+bash "$REPO/bin/render.sh" --source "$PRJA/src" --dest "$PRJA/out" --config "$PRJA/cfg.json" --base-version v1 >/dev/null 2>&1
+A_SHA="$(sha "$PRJA/out/a.md")"
+python3 - "$PRJA/cfg.json" "$A_SHA" <<'EOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+c["managed_files"]["sub/../a.md"] = {"sha256": sys.argv[2], "base_version": "v0", "source": "x"}
+json.dump(c, open(sys.argv[1], "w"), indent=2)
+EOF
+ALIAS_ERR="$WORK/t2-alias-err.txt"
+bash "$REPO/bin/render.sh" --source "$PRJA/src" --dest "$PRJA/out" --config "$PRJA/cfg.json" --base-version v1 >/dev/null 2>"$ALIAS_ERR"
+assert "alias key refused: managed a.md survives" test -f "$PRJA/out/a.md"
+assert "alias refusal reported" grep -q 'REFUSING stale alias' "$ALIAS_ERR"
+
 # ---------- T3: rebuild-views ----------
 echo "T3: rebuild-views.sh resolution + safety"
 PRJ="$WORK/t3"; mkdir -p "$PRJ/.dotcortex/layers/org/commands" "$PRJ/.dotcortex/layers/team/commands" "$PRJ/.dotcortex/layers/org/skills/demo"
@@ -183,6 +223,19 @@ ln -s "../nonexistent-target" "$PRJ/.claude/commands"
 bash "$REPO/bin/rebuild-views.sh" --root "$PRJ" >/dev/null 2>&1 || fail "dangling tool-view symlink: rebuild succeeds"
 assert "dangling tool-view symlink repaired" grep -q 'team x' "$PRJ/.claude/commands/x.md"
 
+# Safety 5 (regression): tool-view symlink to a regular FILE -> unexpected, abort untouched
+printf 'i am a file\n' > "$PRJ/somefile"
+rm -f "$PRJ/.claude/commands"
+ln -s "../somefile" "$PRJ/.claude/commands"
+if bash "$REPO/bin/rebuild-views.sh" --root "$PRJ" >/dev/null 2>&1; then
+  fail "file-target tool-view symlink: rebuild aborts"
+else
+  ok "file-target tool-view symlink: rebuild aborts"
+fi
+[ -L "$PRJ/.claude/commands" ] && [ "$(readlink "$PRJ/.claude/commands")" = "../somefile" ] \
+  && ok "file-target tool-view symlink left untouched" || fail "file-target tool-view symlink left untouched"
+rm -f "$PRJ/.claude/commands"
+
 # ---------- T4: installer re-run over symlinked views ----------
 echo "T4: install.sh re-run safety"
 TGT="$WORK/t4"; mkdir -p "$TGT"
@@ -203,6 +256,18 @@ rm -rf "$TGT/.claude/commands"
 ln -s "../missing/commands" "$TGT/.claude/commands"
 bash "$REPO/install.sh" --yes "$TGT" >/dev/null 2>&1 || fail "re-run over broken symlink succeeds"
 assert "broken symlink repaired: view resolves" grep -q 'cortex-init' "$TGT/.claude/commands/cortex-init.md"
+
+# Symlink to a regular file -> unexpected (NOT "dangling"), abort untouched
+printf 'plain file\n' > "$TGT/plainfile"
+rm -rf "$TGT/.claude/commands"
+ln -s "../plainfile" "$TGT/.claude/commands"
+if bash "$REPO/install.sh" --yes "$TGT" >/dev/null 2>&1; then
+  fail "file-target symlink: install aborts"
+else
+  ok "file-target symlink: install aborts"
+fi
+[ -L "$TGT/.claude/commands" ] && [ "$(readlink "$TGT/.claude/commands")" = "../plainfile" ] \
+  && ok "file-target symlink left untouched" || fail "file-target symlink left untouched"
 
 # Wrong-target symlink -> abort, untouched
 mkdir -p "$TGT/elsewhere"

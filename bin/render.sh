@@ -142,12 +142,26 @@ old_manifest = config.get("managed_files", {})
 stale = sorted(set(old_manifest) - set(new_manifest))
 dest_abs = os.path.abspath(dest)
 removed = 0
+dest_real = os.path.realpath(dest_abs)
 for rel in stale:
     norm = os.path.normpath(rel)
     candidate = os.path.abspath(os.path.join(dest_abs, norm))
+    # Lexical containment first…
     if os.path.isabs(rel) or not (candidate == dest_abs or
                                   candidate.startswith(dest_abs + os.sep)):
         print(f"render.sh: REFUSING stale manifest entry escaping dest: {rel}",
+              file=sys.stderr)
+        continue
+    # …then physical: a symlinked directory beneath dest must not smuggle the
+    # deletion outside. The candidate's PARENT must resolve inside dest.
+    parent_real = os.path.realpath(os.path.dirname(candidate))
+    if not (parent_real == dest_real or parent_real.startswith(dest_real + os.sep)):
+        print(f"render.sh: REFUSING stale entry whose real path escapes dest: {rel}",
+              file=sys.stderr)
+        continue
+    # An alias key (e.g. "sub/../a.md") must never delete a currently managed file.
+    if norm in new_manifest:
+        print(f"render.sh: REFUSING stale alias of a managed file: {rel} -> {norm}",
               file=sys.stderr)
         continue
     if os.path.isfile(candidate):

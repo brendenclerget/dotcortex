@@ -246,18 +246,26 @@ cp "$DOTCORTEX_DIR/commands/cortex-update.md" "$TARGET_DIR/.dotcortex/commands/c
 NEED_FILE_LINKS=1
 if [ -L "$TARGET_DIR/.claude/commands" ]; then
   EXPECTED_TARGET="$(cd "$TARGET_DIR/.dotcortex/commands" && pwd -P)"
-  ACTUAL_TARGET="$(cd "$TARGET_DIR/.claude/commands" 2>/dev/null && pwd -P || true)"
-  if [ "$ACTUAL_TARGET" = "$EXPECTED_TARGET" ]; then
-    echo "View:      .claude/commands is a directory symlink to .dotcortex/commands — bootstrap commands already exposed."
-    NEED_FILE_LINKS=0
-  elif [ -z "$ACTUAL_TARGET" ]; then
+  if [ ! -e "$TARGET_DIR/.claude/commands" ]; then
+    # Truly dangling (target does not exist): safe to repair.
     echo "View:      .claude/commands is a BROKEN symlink — repairing."
     rm -f "$TARGET_DIR/.claude/commands"
   else
-    echo "Error: .claude/commands is a symlink to an unexpected location:" >&2
-    echo "  $ACTUAL_TARGET (expected $EXPECTED_TARGET)" >&2
-    echo "Refusing to modify it. Fix or remove the symlink, then re-run." >&2
-    exit 1
+    # Target exists — only an accessible directory resolving to the expected
+    # path is valid; a file target or inaccessible dir aborts untouched.
+    ACTUAL_TARGET=""
+    if [ -d "$TARGET_DIR/.claude/commands" ]; then
+      ACTUAL_TARGET="$(cd "$TARGET_DIR/.claude/commands" 2>/dev/null && pwd -P || true)"
+    fi
+    if [ "$ACTUAL_TARGET" = "$EXPECTED_TARGET" ]; then
+      echo "View:      .claude/commands is a directory symlink to .dotcortex/commands — bootstrap commands already exposed."
+      NEED_FILE_LINKS=0
+    else
+      echo "Error: .claude/commands is a symlink to an unexpected target:" >&2
+      echo "  $(readlink "$TARGET_DIR/.claude/commands") (expected to resolve to $EXPECTED_TARGET)" >&2
+      echo "Refusing to modify it. Fix or remove the symlink, then re-run." >&2
+      exit 1
+    fi
   fi
 fi
 if [ "$NEED_FILE_LINKS" -eq 1 ]; then
