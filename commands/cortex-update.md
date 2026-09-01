@@ -19,7 +19,7 @@ If `.dotcortex/config.json` does not exist, check for legacy markers:
 
 If `.dotcortex/config.json` **does** exist, it is the sole authority — ignore any stale legacy files (e.g., an old `.claude/.localmem.json`) entirely; do not let them route you into migration.
 
-If any legacy marker exists, detect a legacy install and ask the user to choose:
+If config is absent and any legacy marker exists, detect a legacy install and ask the user to choose:
 1. Run `install.sh --with-migrations ...` then re-run `/cortex-update`
 2. Run `/cortex-init` in augment mode to rebuild canonical layout
 

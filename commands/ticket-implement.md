@@ -34,6 +34,8 @@ Read the ticket. Branch on `Status:`:
 
 Do **not** auto-refine or auto-unblock — that's a separate, deliberate step.
 
+Also check now, **before claiming**: if this is a parent ticket with open subtasks, stop and recommend implementing the subtasks individually (`/ticket-implement <subtask-id>`).
+
 ## Step 3: Mark IN_PROGRESS
 
 Run the `/ticket-status` workflow to:
@@ -55,8 +57,6 @@ Re-read the ticket end-to-end:
 - Technical notes and reference patterns
 - Any linked subtasks or parent context
 
-If this is a parent ticket with open subtasks, stop and recommend implementing the subtasks individually (`/ticket-implement <subtask-id>`).
-
 ## Step 5: Read the project rules
 
 Before touching code:
@@ -69,7 +69,9 @@ Ticket plans go stale — especially in workspaces where multiple sessions or ag
 
 - Do the named files/routes/models/screens still exist as the ticket describes? Has other work (check recent commits — `git log --oneline -15`, per component repo if applicable) already shipped part of the scope, superseded an approach, or changed a contract the plan relies on?
 - Snapshot `git status --porcelain` (per component repo if applicable). Files left dirty by other sessions are **untouchable** — if the ticket's scope requires editing one, stop and surface the collision instead of proceeding into it.
-- If the plan needs correcting, **update the ticket file now** (amend the plan/checklist, note what changed and why, dated) — the ticket stays the source of truth. Scope *corrections* are yours to make; scope *changes* (dropping an acceptance criterion, adding a feature) are the user's call — surface the question and stop for that part.
+- If the plan needs correcting, **update the ticket file now** (amend the plan/checklist, note what changed and why, dated) — the ticket stays the source of truth. Scope *corrections* are yours to make; scope *changes* (dropping an acceptance criterion, adding a feature) are the user's call — surface the question, and continue with the unaffected parts if any.
+
+**Never strand the claim.** You now hold an IN_PROGRESS claim (Step 3). If anything from here on stops the work entirely before code lands — a dirty-file collision, a scope question that gates the whole ticket, or any other blocker — release the claim before stopping: run the `/ticket-status` workflow to set `Status:` → `BLOCKED` with a dated note naming exactly what it's blocked on (and clear `Assignee:` if nothing is in flight), commit and push. A ticket must never be left IN_PROGRESS with nobody working it.
 
 ## Step 7: Implement
 
