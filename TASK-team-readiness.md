@@ -200,6 +200,10 @@ All flow through Step-0 sanitized patches and render tokens. Task-path items (1,
 7. **W2B** — DONE at the owner-directed light-touch level.
 7. **W3.1** independent items (6, 7, 8); later: launch-planning pack.
 
+## Post-review renames (owner decisions)
+
+- `/ticket-implement` → **`/implement`** (2026-09-01): the `ticket-*` prefix is ticket bookkeeping; implementing is the work itself. Renamed pre-release, zero installs affected.
+
 ## Rollout checklist (what remains when this branch ships)
 
 1. Review the branch, push, tag `v1.5.0` (version resolution activates on the tag).

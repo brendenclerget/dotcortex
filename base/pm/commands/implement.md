@@ -1,5 +1,5 @@
 ---
-name: ticket-implement
+name: implement
 description: Pick up a ticket — validate readiness, reconcile its plan against the current tree, set IN_PROGRESS, implement, and report honestly
 argument-hint: <{{TICKET_PREFIX}}-XXX>
 ---
@@ -34,7 +34,7 @@ Read the ticket. Branch on `Status:`:
 
 Do **not** auto-refine or auto-unblock — that's a separate, deliberate step.
 
-Also check now, **before claiming**: if this is a parent ticket with open subtasks, stop and recommend implementing the subtasks individually (`/ticket-implement <subtask-id>`).
+Also check now, **before claiming**: if this is a parent ticket with open subtasks, stop and recommend implementing the subtasks individually (`/implement <subtask-id>`).
 
 ## Step 3: Mark IN_PROGRESS
 

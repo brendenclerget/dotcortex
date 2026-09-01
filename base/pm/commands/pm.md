@@ -40,7 +40,7 @@ Every command shipped with the PM profile:
 | `/ticket-new <name>` | Create a parent ticket with feature spec and subtask breakdown |
 | `/ticket-refine {{TICKET_PREFIX}}-XXX` | Audit ticket progress against git; create letter children for remaining work |
 | `/ticket-breakdown {{TICKET_PREFIX}}-XXX` | Split an existing ticket into letter subtasks |
-| `/ticket-implement {{TICKET_PREFIX}}-XXX` | Claim a ready ticket, reconcile its plan, implement, report honestly |
+| `/implement {{TICKET_PREFIX}}-XXX` | Claim a ready ticket, reconcile its plan, implement, report honestly |
 | `/ticket-status {{TICKET_PREFIX}}-XXX <STATUS> [OWNER]` | Explicit status/assignee transition (the claim/release primitive) |
 | `/ticket-audit {{TICKET_PREFIX}}-XXX` | Generate a self-contained audit prompt for independent review |
 | `/ticket-close {{TICKET_PREFIX}}-XXX` | Mark DONE, extract knowledge, archive, update boards, report |

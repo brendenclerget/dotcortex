@@ -40,7 +40,7 @@ Defined once in `pm-agent/SKILL.md`; commands reference it as "the Linear block"
 | backlog.md | commands/backlog.md (upstream) | `PREFIX`/`TASKS_DIR` → `{{...}}` tokens; no behavior change. |
 | ticket-status.md | commands/ticket-status.md (upstream) | Token conversion only; it's the claim/release primitive other commands call. |
 | ticket-audit.md | commands/ticket-audit.md (upstream) | Token conversion; note overlap: full-audit process — backlog-validation skill stays lightweight (format/consistency), audit depth lives here. |
-| ticket-implement.md | commands/ticket-implement.md (W4-merged) | Token conversion; verify step reads `workflow_policy` (which checks the policy allows). |
+| implement.md (renamed from ticket-implement post-review — implementing is work, not ticket bookkeeping) | commands/ticket-implement.md (W4-merged) | Token conversion; verify step reads `workflow_policy` (which checks the policy allows). |
 
 ## PM skills + templates
 
