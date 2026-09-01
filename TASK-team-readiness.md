@@ -176,9 +176,9 @@ All flow through Step-0 sanitized patches and render tokens. Task-path items (1,
 
 ## Workstream 4 — Deliberate merges (upstream moved too)
 
-- [ ] `ticket-implement.md` collision: keep upstream's status-gate flow; graft plan-reconciliation-against-tree (scope corrections vs NEEDS-USER scope changes), dirty-file collision protocol, zero-overlap lanes, honest AC table, terminal status IN REVIEW.
-- [ ] Pull down upstream's post-install fixes: config-path migration, `/ticket-status`, `/ticket-audit`.
-- [ ] Remove `.localmem.json` legacy-marker handling from cortex-update.
+- [x] `ticket-implement.md` collision: merged — upstream's status-gate flow (Steps 1–5) kept intact; grafted Step 6 plan-reconciliation (scope corrections vs user-owned scope changes), dirty-file untouchability, zero-overlap lane guidance for subagent dispatch, honest AC table in the report, terminal status REVIEW never DONE. Verify step now defers to workflow policy (rendered in W3.0).
+- [x] Upstream's post-install fixes: satisfied by construction — the branch builds on HEAD `3f3e7bc`, which already contains the config-path migration, `/ticket-status`, and `/ticket-audit`. (`/ticket-audit` vs backlog-cleanup overlap is checked in W3.0 as planned.)
+- [x] `.localmem.json` removed from cortex-update's legacy-marker list; canonical `config.json` declared sole authority when present; migration deletes stale marker files after writing config.
 
 ## Acceptance test (release gate)
 

@@ -15,8 +15,9 @@ Read `.dotcortex/config.json` from the project root.
 
 If `.dotcortex/config.json` does not exist, check for legacy markers:
 - `.claude/.dotcortex.json`
-- `.claude/.localmem.json`
 - `.dotcortex/install-info.json` with migration markers
+
+If `.dotcortex/config.json` **does** exist, it is the sole authority — ignore any stale legacy files (e.g., an old `.claude/.localmem.json`) entirely; do not let them route you into migration.
 
 If any legacy marker exists, detect a legacy install and ask the user to choose:
 1. Run `install.sh --with-migrations ...` then re-run `/cortex-update`
@@ -49,7 +50,7 @@ If legacy layout is detected:
 6. Preserve unmanaged `.claude/` files (for example `.claude/hooks/`, `.claude/plans/`).
 7. Detect current task path from legacy config (`tasks_dir`) and on-disk candidates (`.tasks`, `tasks`, legacy `claude_tasks`, `.claude/tasks`), then ask whether to move, copy, or skip migration into `.dotcortex/tasks`.
 8. Create `.tasks -> .dotcortex/tasks` (or fallback copy view if symlinks unavailable).
-9. Write `.dotcortex/config.json` and mark layout as migrated.
+9. Write `.dotcortex/config.json` and mark layout as migrated, then delete stale legacy marker files (`.claude/.dotcortex.json`, `.claude/.localmem.json`) so they can never shadow the canonical config.
 10. Rebuild tool views from `.dotcortex` (Step 9).
 
 Migration must be idempotent and safe to re-run.

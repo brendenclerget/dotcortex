@@ -1,12 +1,12 @@
 ---
 name: ticket-implement
-description: Pick up a ticket — validate readiness, set IN_PROGRESS, then implement
+description: Pick up a ticket — validate readiness, reconcile its plan against the current tree, set IN_PROGRESS, implement, and report honestly
 argument-hint: <PREFIX-XXX>
 ---
 
 # Implement Ticket
 
-Pick up ticket **$ARGUMENTS** for implementation. Validate it's ready, mark it IN_PROGRESS, then carry out the work described.
+Pick up ticket **$ARGUMENTS** for implementation. Validate it's ready, reconcile its plan against the current tree, mark it IN_PROGRESS, then carry out the work described.
 
 ## Step 1: Locate the ticket
 
@@ -61,31 +61,45 @@ If this is a parent ticket with open subtasks, stop and recommend implementing t
 
 Before touching code:
 - Read the project's `CLAUDE.md` (and any `AGENTS.md` if present) for non-negotiable rules, required checks, and code conventions
-- Note required commands (typecheck, lint, tests) — you'll run these in Step 7
+- Note the checks the project's workflow policy permits you to run (typecheck, lint, tests) — you'll run those in Step 8
 
-## Step 6: Implement
+## Step 6: Reconcile the plan against the current tree
+
+Ticket plans go stale — especially in workspaces where multiple sessions or agents work in parallel. Before writing any code, verify the spec against the CURRENT tree:
+
+- Do the named files/routes/models/screens still exist as the ticket describes? Has other work (check recent commits — `git log --oneline -15`, per component repo if applicable) already shipped part of the scope, superseded an approach, or changed a contract the plan relies on?
+- Snapshot `git status --porcelain` (per component repo if applicable). Files left dirty by other sessions are **untouchable** — if the ticket's scope requires editing one, stop and surface the collision instead of proceeding into it.
+- If the plan needs correcting, **update the ticket file now** (amend the plan/checklist, note what changed and why, dated) — the ticket stays the source of truth. Scope *corrections* are yours to make; scope *changes* (dropping an acceptance criterion, adding a feature) are the user's call — surface the question and stop for that part.
+
+## Step 7: Implement
 
 Carry out the work described in the ticket. Follow the file targets and patterns referenced in the spec. Match existing code style. Don't expand scope — if you discover additional needed work, capture it as a follow-up rather than silently growing this ticket.
 
-## Step 7: Verify
+If you dispatch subagents for independent slices of the work, plan lanes with **zero file overlap** between them (typically by component; keep tightly-coupled changes — e.g., an API contract and its consumer — in one lane, or sequence the dependent lane after its upstream). Every subagent prompt must include its slice of the spec verbatim, the list of untouchable dirty files, and the project rules from Step 5.
 
-Run the checks the project requires (typecheck, lint, tests) for the files you changed. If any fail, fix before reporting completion.
+## Step 8: Verify
+
+Run the checks the project's workflow policy permits for the files you changed. If any fail, fix before reporting completion.
 
 Do **not** auto-commit code changes. The user reviews and decides when to commit.
 
-## Step 8: Report
+## Step 9: Update the ticket and report
 
-Summarize for the user:
+Ticket: check off completed checklist items, append a dated `## Work Log` entry (what was built, files touched, deviations), then set `Status:` → `REVIEW` via the `/ticket-status` workflow. The user marks DONE after validating — never close or archive here.
+
+Your report must contain, without being asked:
 - What was implemented (file-level)
-- Which acceptance criteria are now met (and which remain)
+- **Acceptance criteria table:** each criterion → met / not met / needs user validation. Be honest — explicitly state which checks were run and which were not
+- Any plan corrections made in Step 6, and any scope questions awaiting the user
 - Which checks were run and their results
 - Suggested next step: review diff → commit → `/ticket-close $ARGUMENTS`
 
 ---
 
 **Remember:**
-- Pull before you push (the status update commits to TASKS_DIR).
+- Pull before you push (status updates commit to TASKS_DIR).
 - Don't auto-close. The user decides when work is truly done.
 - Don't expand scope without surfacing it.
+- Other sessions' dirty files are untouchable; collisions get surfaced, not steamrolled.
 
 Arguments: $ARGUMENTS
