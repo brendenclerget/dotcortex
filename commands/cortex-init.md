@@ -470,6 +470,8 @@ Task paths are fixed in v1.5:
 - Canonical: `.dotcortex/tasks/`
 - Compatibility view: `.tasks/ -> .dotcortex/tasks/`
 
+**If Q13 connected an EXISTING team repo, clone it FIRST** — before writing config: clone into `.dotcortex/layers/team/` (applying the merge-local-content rule if init already generated content there) and inherit `policy/workflow_policy.json` into `config.workflow_policy`, so the schema-required policy has its source before the render. The remaining `/context add` steps (config pointer, gitignore, view rebuild) complete in Phase 4.6b. A team repo with no policy file → fall back to the Q15 interview.
+
 **Base assets are NOT copied by the model.** They render through the deterministic pipeline. Augment-mode scope: "augment, don't overwrite" applies to GENERATED project content (team-layer skills/knowledge/memory, CLAUDE.md prose outside markers). The managed org layer is always rendered authoritatively — user customizations belong in the team layer, which the render never touches; a user-modified managed file is detected by hash and surfaced, not silently clobbered.
 
 1. Write `.dotcortex/config.json` first (Phase 4.9's schema — the renderer reads token values from it).
@@ -523,7 +525,7 @@ _Ideas and future considerations._
 
 ### 4.6b: Connect team context (if Q13 answered yes)
 
-Now that `config.json` exists and generated content is in the local layer, execute the full `/context add` flow with the Q13 repo URL. Its merge-local-content step carries the freshly generated skills/knowledge/memory into the team checkout (offered as scoped commits). Then continue to 4.6.
+Complete the `/context add` flow for the Q13 repo (the clone + policy inheritance already ran at the top of 4.5): write `config.context_repo`, gitignore the checkout, and carry any freshly generated skills/knowledge/memory into the team checkout via the merge-local-content step (offered as scoped commits). Then continue to 4.6.
 
 ### 4.6: Rebuild Tool Views From Canonical Structure
 

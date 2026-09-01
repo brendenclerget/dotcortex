@@ -163,7 +163,7 @@ until [ $attempt -ge 5 ]; do
 
   # 4. Stage EXACT paths (tasks-dir-relative — never a glob, never -A), commit, push
   git -C {{TASKS_DIR}} add .ticket_counter "$TICKET_FILE" BACKLOG.md   # or "$TICKET/" for a family folder
-  git -C {{TASKS_DIR}} commit -m "$TICKET: create ticket"
+  git -C {{TASKS_DIR}} commit -m "$TICKET: create ticket" -- .ticket_counter "$TICKET_FILE" BACKLOG.md   # pathspec: pre-staged unrelated entries stay out (use "$TICKET/" for a family)
   git -C {{TASKS_DIR}} push && { echo "Created $TICKET"; break; }
 
   # 5. Push rejected: roll back ONLY this transaction's own artifacts, then retry.

@@ -66,7 +66,7 @@ Stage only the files this status change touched — never the whole tasks dir (p
 ```bash
 # $TICKET_FILE is the path RELATIVE to {{TASKS_DIR}} (resolved after the Step 2 pull)
 git -C {{TASKS_DIR}} add "$TICKET_FILE" BACKLOG.md
-git -C {{TASKS_DIR}} commit -m "chore: set $TICKET_ID to $STATUS"
+git -C {{TASKS_DIR}} commit -m "chore: set $TICKET_ID to $STATUS" -- "$TICKET_FILE" BACKLOG.md
 git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TASKS_DIR}} push; }
 ```
 

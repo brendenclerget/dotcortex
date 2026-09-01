@@ -181,7 +181,7 @@ transaction for the whole close:
 
 ```bash
 git -C {{TASKS_DIR}} add <only-the-files-this-close-touched>
-git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: close"
+git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: close" -- <only-the-files-this-close-touched>
 git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TASKS_DIR}} push; }
 ```
 
