@@ -138,7 +138,7 @@ except OSError:
     for entry in "$view"/* "$view"/.[!.]*; do
       [ -e "$entry" ] || [ -L "$entry" ] || continue
       base="$(basename "$entry")"
-      case "$base" in cortex-init.md|cortex-update.md) ;; *) unmanaged=1; break ;; esac
+      case "$base" in cortex-init.md|cortex-update.md|init-org.md|init-team.md|init-project.md) ;; *) unmanaged=1; break ;; esac
       if [ ! -L "$entry" ]; then unmanaged=1; break; fi
       case "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$entry")" in
         "$dc_real"/*) ;;

@@ -311,9 +311,10 @@ except OSError:
 fi
 if [ "$NEED_FILE_LINKS" -eq 1 ]; then
   mkdir -p "$TARGET_DIR/.claude/commands"
-  rm -f "$TARGET_DIR/.claude/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
-  ln -s "../../.dotcortex/commands/cortex-init.md" "$TARGET_DIR/.claude/commands/cortex-init.md"
-  ln -s "../../.dotcortex/commands/cortex-update.md" "$TARGET_DIR/.claude/commands/cortex-update.md"
+  for c in cortex-init cortex-update init-org init-team init-project; do
+    rm -f "$TARGET_DIR/.claude/commands/$c.md"
+    ln -s "../../.dotcortex/commands/$c.md" "$TARGET_DIR/.claude/commands/$c.md"
+  done
 fi
 
 write_install_metadata

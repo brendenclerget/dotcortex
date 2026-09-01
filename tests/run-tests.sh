@@ -419,7 +419,7 @@ for prof in ["core", "pm", "review", "packs/testing", "packs/design"]:
 json.dump(srcmap, open(os.path.join(stage, ".sources.json"), "w"), indent=1)
 EOF
 mkdir -p "$PROJ/.dotcortex/layers/org/commands"
-mv "$PROJ/.dotcortex/commands/cortex-init.md" "$PROJ/.dotcortex/commands/cortex-update.md" "$PROJ/.dotcortex/layers/org/commands/"
+mv "$PROJ/.dotcortex/commands/"*.md "$PROJ/.dotcortex/layers/org/commands/"
 rmdir "$PROJ/.dotcortex/commands"
 INSTVER="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["dotcortex_version"])' "$PROJ/.dotcortex/install-info.json")"
 bash "$PROJ/.dotcortex/bin/render.sh" --source "$ISTAGE" --dest "$PROJ/.dotcortex/layers/org" \
