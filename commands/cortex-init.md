@@ -460,11 +460,21 @@ Task paths are fixed in v1.5:
 5. Render: `.dotcortex/bin/render.sh --source <staging> --dest .dotcortex/layers/org --strict --config .dotcortex/config.json --base-version <dotcortex_version from install-info>`. Strict mode means an unresolved `{{TOKEN}}` aborts with nothing written — fix the config, re-run. The renderer records every file in `managed_files` (sha256 + base_version + repository-relative source).
 6. Resolve views: `.dotcortex/bin/rebuild-views.sh --root <project-root>` (Phase 4.6).
 
-Task-state scaffolding (data, not behavior — created directly):
-- `.dotcortex/tasks/.ticket_counter` — Contains "1"
-- `.dotcortex/tasks/BACKLOG.md` — Empty scaffold with section headers (below)
-- `.dotcortex/tasks/TODO.md` — Empty ordered-queue scaffold (`# TODO` + empty table)
-- `.dotcortex/tasks/archive/` — Empty directory (create with `.gitkeep`)
+Task-state scaffolding (data, not behavior). Two shapes depending on `task_repo` config:
+
+**Shared namespaced task repo** (`config.task_repo` set — the team default):
+1. Clone `task_repo.url` to `.dotcortex/task-repo/` (add `.dotcortex/task-repo/` to `.gitignore`).
+2. Ensure the namespace path exists: `teams/<team_key>/projects/<project_key>/` — if absent, create it with the scaffold files below and land it via `.dotcortex/bin/task-tx.sh --dir .dotcortex/task-repo --msg "scaffold <team>/<project>" teams/<team_key>/projects/<project_key>/`.
+3. `ln -s task-repo/teams/<team_key>/projects/<project_key> .dotcortex/tasks`
+4. Migrating an existing FLAT task repo into the namespace: run `scripts/migrate-task-repo.sh --repo <checkout> --team <t> --project <p>` from the source checkout (history-preserving `git mv` commit; rollback = `git revert`).
+
+**Local/simple** (no `task_repo`): `.dotcortex/tasks/` is a plain directory (own git repo if `task_storage: separate_repo`).
+
+Scaffold files (either shape):
+- `.ticket_counter` — Contains "1"
+- `BACKLOG.md` — Empty scaffold with section headers (below)
+- `TODO.md` — Empty ordered-queue scaffold (`# TODO` + empty table)
+- `archive/` — Empty directory (create with `.gitkeep`)
 - `.tasks` symlink to `.dotcortex/tasks/` (or copy fallback if symlinks are disabled)
 
 Note: ticket templates are behavior, not task data — they render into the org layer and resolve at `.dotcortex/templates/`; commands reference them there.

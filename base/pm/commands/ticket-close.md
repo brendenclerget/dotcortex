@@ -73,9 +73,10 @@ close commit is authoritative and a failed knowledge write must never block or r
 - **New file:** create it in `.dotcortex/layers/team/knowledge/` (the team/local layer —
   create the directory if this is the first entry), then run
   `.dotcortex/bin/rebuild-views.sh --root .` so the view republishes it.
-- **Team remote connected:** the layer is a checkout — the capture commit uses the same
-  pull → scoped add → commit → push transaction as tasks, retried on rejection. Learnings
-  roll up so future agents inherit them without excavating closed projects.
+- **Team remote connected:** the layer is a checkout — capture with the shared helper:
+  `.dotcortex/bin/task-tx.sh --dir .dotcortex/layers/team --msg "knowledge: <topic> (from $ARGUMENTS)" knowledge/<file>.md`
+  (same pull → scoped add → commit → push transaction as tasks, retried on rejection).
+  Learnings roll up so future agents inherit them without excavating closed projects.
 - **No team remote:** the layer write is a plain local file edit; nothing to push.
 
 **Store when the ticket reveals:**

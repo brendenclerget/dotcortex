@@ -451,6 +451,63 @@ bash "$REPO/install.sh" --yes "$PROJ" >/dev/null 2>&1 \
 assert "bootstrap landed in org layer on re-run" test -f "$PROJ/.dotcortex/layers/org/commands/cortex-init.md"
 assert "views still resolve after post-init re-run" grep -q 'cortex-init' "$PROJ/.dotcortex/commands/cortex-init.md"
 
+# ---------- T7: namespaced task repo — migration, two clones, transactions ----------
+echo "T7: task-repo namespacing + transactions"
+BARE="$WORK/t7/remote.git"; mkdir -p "$BARE"; git init -q --bare "$BARE"
+FLAT="$WORK/t7/flat"
+git clone -q "$BARE" "$FLAT" 2>/dev/null
+( cd "$FLAT" && git config user.email t@t && git config user.name t \
+  && echo "3" > .ticket_counter && echo "# Backlog" > BACKLOG.md && echo "# TODO" > TODO.md \
+  && mkdir -p archive && touch archive/.gitkeep \
+  && printf 'old ticket\n' > APP-001-old-ticket.md \
+  && git add -A && git commit -qm "flat layout" && git push -q )
+
+# History-preserving migration
+bash "$REPO/scripts/migrate-task-repo.sh" --repo "$FLAT" --team acme --project pay --push >/dev/null 2>&1 \
+  && ok "migration runs and pushes" || fail "migration runs and pushes"
+assert "flat root emptied" test ! -e "$FLAT/APP-001-old-ticket.md"
+assert "namespaced path holds the ticket" test -f "$FLAT/teams/acme/projects/pay/APP-001-old-ticket.md"
+( cd "$FLAT" && git log --follow --oneline -- teams/acme/projects/pay/APP-001-old-ticket.md | grep -q "flat layout" ) \
+  && ok "history preserved through the move (git log --follow)" || fail "history preserved through the move (git log --follow)"
+
+# Dirty-tree refusal
+( cd "$FLAT" && echo dirty > teams/acme/projects/pay/BACKLOG.md )
+if bash "$REPO/scripts/migrate-task-repo.sh" --repo "$FLAT" --team x --project y >/dev/null 2>&1; then
+  fail "migration refuses a dirty tree"
+else
+  ok "migration refuses a dirty tree"
+fi
+( cd "$FLAT" && git checkout -q -- . )
+
+# Second user clones and resolves the same path; symlink chain works
+U2="$WORK/t7/user2"
+git clone -q "$BARE" "$U2" 2>/dev/null
+( cd "$U2" && git config user.email u2@t && git config user.name u2 )
+assert "second clone resolves the namespaced path" test -f "$U2/teams/acme/projects/pay/APP-001-old-ticket.md"
+PRJ7="$WORK/t7/proj"; mkdir -p "$PRJ7/.dotcortex"
+ln -s "$U2" "$PRJ7/.dotcortex/task-repo"
+ln -s "task-repo/teams/acme/projects/pay" "$PRJ7/.dotcortex/tasks"
+assert "project symlink chain resolves tickets" test -f "$PRJ7/.dotcortex/tasks/APP-001-old-ticket.md"
+
+# Concurrent scoped transactions from two clones (task-tx.sh)
+printf 'ticket A\n' > "$FLAT/teams/acme/projects/pay/APP-004-a.md"
+bash "$REPO/bin/task-tx.sh" --dir "$FLAT" --msg "APP-004: create" teams/acme/projects/pay/APP-004-a.md >/dev/null 2>&1 \
+  && ok "clone 1 transaction lands" || fail "clone 1 transaction lands"
+printf 'ticket B\n' > "$U2/teams/acme/projects/pay/APP-005-b.md"
+bash "$REPO/bin/task-tx.sh" --dir "$U2" --msg "APP-005: create" teams/acme/projects/pay/APP-005-b.md >/dev/null 2>&1 \
+  && ok "clone 2 transaction lands after pulling clone 1's push" || fail "clone 2 transaction lands after pulling clone 1's push"
+( cd "$FLAT" && git pull -q --rebase && test -f teams/acme/projects/pay/APP-005-b.md ) \
+  && ok "both machines see both tickets" || fail "both machines see both tickets"
+
+# Scoped: an unrelated dirty file is never swept into the commit
+printf 'other session dirty\n' > "$U2/teams/acme/projects/pay/APP-006-dirty.md"
+printf 'ticket C\n' > "$U2/teams/acme/projects/pay/APP-007-c.md"
+bash "$REPO/bin/task-tx.sh" --dir "$U2" --msg "APP-007: create" teams/acme/projects/pay/APP-007-c.md >/dev/null 2>&1
+( cd "$U2" && git status --porcelain | grep -q "APP-006-dirty" ) \
+  && ok "unrelated dirty file left uncommitted (scoped staging)" || fail "unrelated dirty file left uncommitted (scoped staging)"
+( cd "$U2" && ! git log --oneline -1 --name-only | grep -q "APP-006" ) \
+  && ok "commit contains only the given paths" || fail "commit contains only the given paths"
+
 echo ""
 echo "passed: $PASS  failed: $FAIL"
 [ "$FAIL" -eq 0 ]

@@ -233,8 +233,9 @@ run_migrations
 mkdir -p "$TARGET_DIR/.dotcortex/bin" "$TARGET_DIR/.dotcortex/schemas"
 cp "$DOTCORTEX_DIR/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/render.sh"
 cp "$DOTCORTEX_DIR/bin/rebuild-views.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh"
+cp "$DOTCORTEX_DIR/bin/task-tx.sh" "$TARGET_DIR/.dotcortex/bin/task-tx.sh"
 cp "$DOTCORTEX_DIR/schemas/config.schema.json" "$TARGET_DIR/.dotcortex/schemas/config.schema.json"
-chmod +x "$TARGET_DIR/.dotcortex/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh"
+chmod +x "$TARGET_DIR/.dotcortex/bin/render.sh" "$TARGET_DIR/.dotcortex/bin/rebuild-views.sh" "$TARGET_DIR/.dotcortex/bin/task-tx.sh"
 
 # Bootstrap commands: BEFORE init, .dotcortex/commands is a plain dir — install
 # there. AFTER init, .dotcortex/commands is a generated resolved view and the

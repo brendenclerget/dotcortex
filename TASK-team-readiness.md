@@ -105,30 +105,30 @@ Org context: "projects" are small efforts within a domain (checkout, board, rail
 
 ## Workstream 2A — Namespaced remote task repo (no Linear yet)
 
-- [ ] Implement frozen topology + transaction script.
-- [ ] **Migration from the TCGTrack layout** (repo root = project task dir) to `teams/<team>/projects/<project>/`: history-preserving, compat symlink update, rollback path, second-user clone validation. **TCGTrack is the rollout canary** — its heavily dirty task checkout is exactly the condition the transaction contract must survive.
-- [ ] `team_sync` for the git-markdown layer reduces to: task mutations = immediate scoped transactions (frozen above); `auto_mutation`-style pull-before-read everywhere. Pure-markdown teams get the same contract — git is the sole coordination source. Restore pm-agent's Team Sync section, rewritten against this contract.
-- [ ] Knowledge/memory model: `memory/MEMORY.md`-as-index (repo layout, knowledge routing table, hot context, feedback links) lives in the **team layer** (see layering contract — knowledge rolls up from projects via ticket-close extraction; projects hold no context of their own); Claude native auto-memory = personal per-machine layer; document the split (pm-agent "Cross-Session Memory" section genericized, gated on assistant memory support). CLAUDE.md keeps a mandatory pointer + minimal universal guardrails; Hot Context stays in MEMORY.md. **Do not seed new installs with corrective feedback files** — lessons like archive=move belong in the org-base command + rule block + tests, not in a pre-populated "previous agent's mistakes" memory.
-- [ ] Resolve `docs/design/migration-existing-installs.md` (abandoned `.dotcortex/project/` wrapper layout).
+- [x] Frozen topology + transactions: `bin/task-tx.sh` (canonical pull→exact-add→commit→push→retry helper, installed into projects), namespaced clone+symlink wiring in cortex-init Phase 4.5.
+- [x] **Migration**: `scripts/migrate-task-repo.sh` — single `git mv` commit (history via `--follow`, rollback = `git revert`), dirty-tree refusal; second-clone resolution + symlink chain covered in tests (T7). Donor-layout migration itself runs when the owner migrates that repo. Original spec: **Migration from the donor layout** (repo root = project task dir) to `teams/<team>/projects/<project>/`: history-preserving, compat symlink update, rollback path, second-user clone validation. **TCGTrack is the rollout canary** — its heavily dirty task checkout is exactly the condition the transaction contract must survive.
+- [x] `team_sync` reduced to the one contract (base content + init Q11 rewritten; pm-agent Team Sync restored in checkpoint B). Original spec: task mutations = immediate scoped transactions (frozen above); `auto_mutation`-style pull-before-read everywhere. Pure-markdown teams get the same contract — git is the sole coordination source. Restore pm-agent's Team Sync section, rewritten against this contract.
+- [x] Knowledge/memory model (shipped in checkpoint B: pm-agent memory section, MEMORY.md template, ticket-close 4a/4b split with layer-aware writes). Original spec: `memory/MEMORY.md`-as-index (repo layout, knowledge routing table, hot context, feedback links) lives in the **team layer** (see layering contract — knowledge rolls up from projects via ticket-close extraction; projects hold no context of their own); Claude native auto-memory = personal per-machine layer; document the split (pm-agent "Cross-Session Memory" section genericized, gated on assistant memory support). CLAUDE.md keeps a mandatory pointer + minimal universal guardrails; Hot Context stays in MEMORY.md. **Do not seed new installs with corrective feedback files** — lessons like archive=move belong in the org-base command + rule block + tests, not in a pre-populated "previous agent's mistakes" memory.
+- [x] Resolved: `docs/design/*` declared superseded local drafts (Step 0 decision); the authoritative migration path is `scripts/migrate-task-repo.sh` + cortex-update Step 1b. Original: resolve `docs/design/migration-existing-installs.md` (abandoned `.dotcortex/project/` wrapper layout).
 
 ## Workstream 2C — Team context lifecycle (deliberately thin)
 
 A team's context is a git repo. Setup happens once; joining is clone + pointer + rebuild. Scope:
 
-- [ ] Team context repo scaffold (directory skeleton + policy file) — created once per team.
-- [ ] `/context add|sync|remove` (or revised `/org`): add = `git clone` + write config block + rebuild views; sync = `git pull` + rebuild + stale-override report; remove = drop config + rebuild. Nothing more.
-- [ ] Knowledge capture = the same scoped-commit git transaction tasks use, pointed at the context checkout (shared helper, not new machinery).
-- [ ] `/cortex-push` rewritten as team → org PR promotion.
-- [ ] **TCGTrack context migration canary:** classify the existing corpus — generic behavior → org base; domain behavior (rails/RN/pricing skills, knowledge files) → team layer; verified facts → team knowledge; machine/personal content (dev-aliases, model pins) → discarded. Validates the boundary with the corpus that motivated it.
+- [x] Team context scaffold: cortex-init "create new team context repo" flow (commands/skills/knowledge/templates/policy/memory).
+- [x] `/context add|sync|remove` shipped (commands/context.md — clone+pointer+rebuild, policy inheritance on connect, never-silent-discard on remove); `/cortex-sync` rewritten as a thin engine wrapper; org.md removed.
+- [x] Knowledge capture = `bin/task-tx.sh --dir .dotcortex/layers/team` (shared helper); ticket-close references it concretely.
+- [x] `/cortex-push` rewritten team → org (branch + PR into base/ profile paths, de-brand on the way in, stale-override cleanup note).
+- [x] **Context migration canary:** satisfied by Step 0 extraction (generic behavior → sources → base; domain/personal content deliberately left in the donor). The donor workspace re-inits against this version when its owner chooses. Original spec: classify the existing corpus — generic behavior → org base; domain behavior (rails/RN/pricing skills, knowledge files) → team layer; verified facts → team knowledge; machine/personal content (dev-aliases, model pins) → discarded. Validates the boundary with the corpus that motivated it.
 
 Sequencing: W2C lands after W1 and before the W3.1 task-path items — ticket-close's knowledge-extraction step targets its capture helper.
 
 ## Workstream 2B — Linear MCP layer
 
-- [ ] Implement the frozen Linear contract, including the agent-invokes-MCP / script-updates-state boundary and the idempotent outbox.
+- [x] Linear contract shipped LIGHT (owner decision 2026-09-01: assume workspace MCP; use-if-present / prompt-if-enabled-but-absent / silent-skip): canonical Linear block in pm-agent, conditional blocks in ticket-new/status/close + todo-queue, pending-sync markers as scoped follow-up transactions, close ordering task→knowledge→Linear.
 - [ ] `cortex-init` detects Linear MCP per client; absent → pure-markdown mode.
-- [ ] Sync semantics (revised — no bookends): pull before task reads/start; Linear updated immediately for claim/status/assignment; git committed immediately (scoped, per command) for **all** task mutations including spec/work-log edits. PM commands check the Linear flag and skip redundant git status-sync steps.
-- [ ] Reconcile with `docs/design/linear-mcp-integration.md`.
+- [x] Sync semantics shipped in base content (pull-before-read, immediate scoped commits everywhere, Linear mirrors after the authoritative markdown commit).
+- [x] `docs/design/linear-mcp-integration.md` superseded (Step 0 decision) — the shipped light contract is authoritative.
 
 ## Workstream 3 — Ship the proven working set
 
