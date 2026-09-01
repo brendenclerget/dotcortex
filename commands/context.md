@@ -27,8 +27,9 @@ Supported subcommands:
 
 1. Require `config.context_repo`; else report "no team context connected" and stop.
 2. Pull: `.dotcortex/bin/task-tx.sh --dir .dotcortex/layers/team --pull-only`
-3. Rebuild views (same engine call as above).
-4. Report: overrides in effect (team-wins list from the rebuild output), any stale overrides (a team file whose `based_on_org_version` lags the installed org base), and whether policy changed (if so, re-render marker blocks).
+3. **Reload policy:** re-read `.dotcortex/layers/team/policy/workflow_policy.json`; if it differs from `config.workflow_policy`, update config and re-render the CLAUDE.md/AGENTS.md marker blocks (team policy wins; tell the user what changed).
+4. Rebuild views (same engine call as above).
+5. Report: overrides in effect (the OVERRIDE lines from the rebuild output), stale overrides, and any policy change. **Stale-override mechanism:** for each overriding team file, grep its frontmatter for a `based_on_org_version:` line; if present and older than `install-info.json.dotcortex_version`, flag it stale ("org base moved — refresh or delete the override"). No line → list it as an unversioned deliberate override.
 
 ## /context remove
 

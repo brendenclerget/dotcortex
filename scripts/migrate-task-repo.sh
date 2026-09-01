@@ -46,15 +46,22 @@ fi
 
 mkdir -p "$REPO/$DEST"
 
-# Move everything at root except .git and the teams/ tree itself.
+# Move only TRACKED top-level entries (git ls-files, so ignored/untracked root
+# artifacts are never handed to git mv and can't fail the migration mid-way).
 moved=0
-for entry in "$REPO"/* "$REPO"/.[!.]*; do
-  name="$(basename "$entry")"
-  [ -e "$entry" ] || [ -L "$entry" ] || continue
+for name in $(git -C "$REPO" ls-files | cut -d/ -f1 | sort -u); do
   case "$name" in .git|teams) continue ;; esac
+  [ -e "$REPO/$name" ] || continue
   git -C "$REPO" mv "$name" "$DEST/$name"
   moved=$((moved + 1))
 done
+
+# Report anything left behind (ignored/untracked) so nothing silently vanishes.
+leftover="$(cd "$REPO" && ls -A | grep -v -e '^\.git$' -e '^teams$' || true)"
+if [ -n "$leftover" ]; then
+  echo "NOTE: untracked/ignored root entries were NOT moved (move manually if wanted):"
+  echo "$leftover" | sed 's/^/    /'
+fi
 
 [ "$moved" -gt 0 ] || { echo "migrate-task-repo.sh: nothing to move" >&2; exit 1; }
 
@@ -71,6 +78,10 @@ if [ "$PUSH" -eq 1 ] && git -C "$REPO" remote get-url origin >/dev/null 2>&1; th
 else
   echo "NOT pushed — review, then push (or 'git revert HEAD' to roll back)."
 fi
+
+echo "Rollback note: 'git revert' undoes the repo move. If you ALREADY repointed"
+echo "a project's .dotcortex/tasks symlink at the namespace, restore its previous"
+echo "target too — the revert does not touch project workspaces."
 
 cat <<EOF
 

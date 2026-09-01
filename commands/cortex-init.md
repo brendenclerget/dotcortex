@@ -288,6 +288,8 @@ Based on selection, add the appropriate rules to CLAUDE.md:
 
 There is exactly ONE sync contract when a remote exists (no modes): **every task mutation is an immediate scoped commit + push** — pull before reads, `git add <exact touched paths>` (never `-A`), commit, push, retry once on rejection. Session bookends and per-mode behavior do not exist; the pm-agent skill's Team Sync section documents the contract. Solo installs skip sync logic entirely.
 
+**If remote-synced, collect and write `config.task_repo`:** `url` (the shared task repo), `team_key`, `project_key` (defaults: team from the context repo's team_key if connected; project from the repo/directory name), `checkout_path: ".dotcortex/task-repo"`, `branch` (default branch). This block is what activates the namespaced clone + symlink flow in Phase 4.5 — without it the install is local/simple.
+
 **Q12: Guardrails** (free text)
 - Question: "Anything else Claude should never do? (e.g., 'never modify the auth module', 'always use TypeScript strict mode')"
 - Header: "Guardrails"
@@ -297,6 +299,7 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 
 **Q13: Team context connection** (only if Q5a = org_connected)
 - Question: "Connect to a team context repo (shared skills/commands/knowledge/policy)?"
+- On connect, **run the `/context add` flow** (clone into `.dotcortex/layers/team/`, contract sanity check, inherit `policy/workflow_policy.json` into config, gitignore the checkout, rebuild views) — do not just record a pointer.
 - Header: "Org repo"
 - Options:
   - "Select existing repo (discover via gh)"
@@ -455,7 +458,7 @@ Task paths are fixed in v1.5:
 
 1. Write `.dotcortex/config.json` first (Phase 4.9's schema — the renderer reads token values from it).
 2. Locate the source checkout: `source_checkout` in `.dotcortex/install-info.json` (recorded by install.sh). If that path no longer exists, clone `config.source` and check out the exact tag recorded as `dotcortex_version` in install-info.
-3. Assemble a staging tree from the selected profiles: for each enabled profile in `<source_checkout>/base/profiles.json` — `core` ALWAYS renders, for every install mode including lightweight/no-task setups; `pm` only if Q5 = full PM; `review` only if Q17 configured it; packs per interview, copy that profile's `commands/`, `skills/`, `templates/` subtrees from `base/` into one temp staging dir, and write `<staging>/.sources.json` mapping every staged-relative path to its repository-relative origin (e.g. `"commands/ticket-new.md": "base/pm/commands/ticket-new.md"`) — the renderer uses this for git-retrievable manifest sources. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
+3. Assemble a staging tree from the selected profiles: for each enabled profile in `<source_checkout>/base/profiles.json` — `core` ALWAYS renders, for every install mode including lightweight/no-task setups; `pm` only if Q5 = full PM; `review` only if Q17 configured it; packs per interview, copy that profile's `commands/`, `skills/`, `templates/`, `knowledge/` subtrees from `base/` into one temp staging dir, and write `<staging>/.sources.json` mapping every staged-relative path to its repository-relative origin (e.g. `"commands/ticket-new.md": "base/pm/commands/ticket-new.md"`) — the renderer uses this for git-retrievable manifest sources. (`scaffolds/` are NOT rendered — they are interview templates consumed directly by Phase 4.1, with their own `{{...}}` slot vocabulary the renderer must never see.)
 4. **Migrate bootstrap commands into the layer** so the resolved view can own `.dotcortex/commands`: `mkdir -p .dotcortex/layers/org/commands && mv .dotcortex/commands/cortex-init.md .dotcortex/commands/cortex-update.md .dotcortex/layers/org/commands/` (then remove the now-empty `.dotcortex/commands` dir).
 5. Render: `.dotcortex/bin/render.sh --source <staging> --dest .dotcortex/layers/org --strict --config .dotcortex/config.json --base-version <dotcortex_version from install-info>`. Strict mode means an unresolved `{{TOKEN}}` aborts with nothing written — fix the config, re-run. The renderer records every file in `managed_files` (sha256 + base_version + repository-relative source).
 6. Resolve views: `.dotcortex/bin/rebuild-views.sh --root <project-root>` (Phase 4.6).
@@ -467,6 +470,7 @@ Task-state scaffolding (data, not behavior). Two shapes depending on `task_repo`
 2. Ensure the namespace path exists: `teams/<team_key>/projects/<project_key>/` — if absent, create it with the scaffold files below and land it via `.dotcortex/bin/task-tx.sh --dir .dotcortex/task-repo --msg "scaffold <team>/<project>" teams/<team_key>/projects/<project_key>/`.
 3. `ln -s task-repo/teams/<team_key>/projects/<project_key> .dotcortex/tasks`
 4. Migrating an existing FLAT task repo into the namespace: run `scripts/migrate-task-repo.sh --repo <checkout> --team <t> --project <p>` from the source checkout (history-preserving `git mv` commit; rollback = `git revert`).
+5. **Existing LOCAL tasks + shared repo:** never create `.dotcortex/tasks` as a directory when `task_repo` is set. Move the existing task files INTO the namespace path inside the checkout (one scoped transaction via task-tx.sh), THEN create the symlink. The Q6c migration flow feeds this path — it must not leave a plain directory where the symlink belongs.
 
 **Local/simple** (no `task_repo`): `.dotcortex/tasks/` is a plain directory (own git repo if `task_storage: separate_repo`).
 

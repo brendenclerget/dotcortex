@@ -20,6 +20,7 @@
         "tools": { "type": "array", "items": { "enum": ["claude", "codex", "gemini", "cursor"] } },
         "task_repo": {
           "type": "object",
+          "required": ["url", "checkout_path", "branch", "team_key", "project_key"],
           "properties": {
             "url": { "type": "string" },
             "checkout_path": { "type": "string" },
@@ -30,6 +31,7 @@
         },
         "context_repo": {
           "type": "object",
+          "required": ["url", "checkout_path", "branch", "team_key"],
           "properties": {
             "url": { "type": "string" },
             "checkout_path": { "type": "string" },

@@ -352,7 +352,7 @@ STAGE="$WORK/t5/staging"; BOUT="$WORK/t5/out"; mkdir -p "$STAGE"
 # Assemble staging like cortex-init does: enabled profiles + optional packs,
 # commands/skills/templates only (scaffolds are interview templates, not rendered).
 for prof in core pm review packs/testing packs/design; do
-  for sub in commands skills templates; do
+  for sub in commands skills templates knowledge; do
     [ -d "$REPO/base/$prof/$sub" ] && { mkdir -p "$STAGE/$sub"; cp -R "$REPO/base/$prof/$sub/" "$STAGE/$sub/"; }
   done
 done
@@ -404,7 +404,7 @@ import json, os, shutil, sys
 base, stage = sys.argv[1], sys.argv[2]
 srcmap = {}
 for prof in ["core", "pm", "review", "packs/testing", "packs/design"]:
-    for sub in ["commands", "skills", "templates"]:
+    for sub in ["commands", "skills", "templates", "knowledge"]:
         root = os.path.join(base, prof, sub)
         if not os.path.isdir(root):
             continue
@@ -437,7 +437,7 @@ T6VER="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["manage
 
 # Non-PM install: core profile alone renders strict-clean (lightweight setups)
 CSTAGE="$WORK/t6-core"; mkdir -p "$CSTAGE"
-for sub in commands skills templates; do
+for sub in commands skills templates knowledge; do
   [ -d "$REPO/base/core/$sub" ] && { mkdir -p "$CSTAGE/$sub"; cp -R "$REPO/base/core/$sub/" "$CSTAGE/$sub/"; }
 done
 cp "$WORK/t5/config.json" "$WORK/t6-core-cfg.json"
@@ -498,6 +498,38 @@ bash "$REPO/bin/task-tx.sh" --dir "$U2" --msg "APP-005: create" teams/acme/proje
   && ok "clone 2 transaction lands after pulling clone 1's push" || fail "clone 2 transaction lands after pulling clone 1's push"
 ( cd "$FLAT" && git pull -q --rebase && test -f teams/acme/projects/pay/APP-005-b.md ) \
   && ok "both machines see both tickets" || fail "both machines see both tickets"
+
+# Tracked-file EDIT transaction (pull must not choke on the pre-edited tree)
+printf 'edited existing ticket\n' >> "$FLAT/teams/acme/projects/pay/APP-001-old-ticket.md"
+bash "$REPO/bin/task-tx.sh" --dir "$FLAT" --msg "APP-001: update" teams/acme/projects/pay/APP-001-old-ticket.md >/dev/null 2>&1 \
+  && ok "tracked-file edit transaction lands (autostash over pull)" || fail "tracked-file edit transaction lands (autostash over pull)"
+
+# Pre-staged unrelated index entry must NOT ride into the commit
+printf 'prestaged other work\n' > "$FLAT/teams/acme/projects/pay/APP-008-prestaged.md"
+( cd "$FLAT" && git add teams/acme/projects/pay/APP-008-prestaged.md )
+printf 'ticket D\n' > "$FLAT/teams/acme/projects/pay/APP-009-d.md"
+bash "$REPO/bin/task-tx.sh" --dir "$FLAT" --msg "APP-009: create" teams/acme/projects/pay/APP-009-d.md >/dev/null 2>&1
+( cd "$FLAT" && ! git log -1 --name-only | grep -q "APP-008" ) \
+  && ok "pre-staged unrelated path excluded from pathspec'd commit" || fail "pre-staged unrelated path excluded from pathspec'd commit"
+( cd "$FLAT" && git reset -q teams/acme/projects/pay/APP-008-prestaged.md && rm teams/acme/projects/pay/APP-008-prestaged.md )
+
+# Double migration refused
+if bash "$REPO/scripts/migrate-task-repo.sh" --repo "$FLAT" --team acme --project pay >/dev/null 2>&1; then
+  fail "second migration into same namespace refused"
+else
+  ok "second migration into same namespace refused"
+fi
+
+# Ignored root artifact doesn't break migration (fresh flat repo)
+BARE2="$WORK/t7/remote2.git"; mkdir -p "$BARE2"; git init -q --bare "$BARE2"
+FLAT2="$WORK/t7/flat2"; git clone -q "$BARE2" "$FLAT2" 2>/dev/null
+( cd "$FLAT2" && git config user.email t@t && git config user.name t \
+  && echo "ignored.tmp" > .gitignore && echo scratch > ignored.tmp \
+  && printf 'ticket\n' > APP-001-x.md && git add .gitignore APP-001-x.md && git commit -qm flat && git push -q )
+bash "$REPO/scripts/migrate-task-repo.sh" --repo "$FLAT2" --team t2 --project p2 >/dev/null 2>&1 \
+  && ok "migration succeeds with ignored root artifact present" || fail "migration succeeds with ignored root artifact present"
+assert "ignored artifact left in place (reported, not moved)" test -f "$FLAT2/ignored.tmp"
+assert "tracked file moved" test -f "$FLAT2/teams/t2/projects/p2/APP-001-x.md"
 
 # Scoped: an unrelated dirty file is never swept into the commit
 printf 'other session dirty\n' > "$U2/teams/acme/projects/pay/APP-006-dirty.md"
