@@ -191,6 +191,28 @@ The same `.dotcortex/` content is exposed to OpenAI Codex CLI (`AGENTS.md`, `.ag
 
 `/ticket-close` can add gotchas, decisions, and patterns from a closed ticket to the team layer, each with a date and a code reference; most tickets produce none. Manual entries can be added at any time. Facts are committed directly. Rules of the form "always do X" are not stored as knowledge; they are raised as skill or policy change proposals.
 
+`MEMORY.md` is the index. It lists each knowledge file with a one-line "when to read" note, plus a short hot-context list of rules that apply to nearly every session. Agents read the index, then open only the knowledge files relevant to the task; the full knowledge set is never loaded wholesale. In an org, `MEMORY.md` lives in the team layer, so every project on the team shares the same index.
+
+```markdown
+# Team Memory
+
+## Knowledge Index
+
+| File | When to read |
+|:-----|:-------------|
+| `knowledge/api-patterns.md`      | Adding or changing an endpoint |
+| `knowledge/data-model.md`        | Migrations, schema changes, query performance |
+| `knowledge/patterns-and-gotchas.md` | Debugging, unfamiliar code |
+| `knowledge/deferred-scope.md`    | Before proposing new features |
+
+## Hot Context
+
+- Money is integer cents in the API, never floats
+- Public API errors are `{ error: "sentence" }` only
+- Never mark a ticket done without code evidence
+```
+
+
 ## Updating
 
 ```bash
