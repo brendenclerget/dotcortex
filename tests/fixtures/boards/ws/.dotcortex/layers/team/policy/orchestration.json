@@ -1,0 +1,5 @@
+{
+  "worktree_root": "../ws-wt",
+  "branch_prefix": "agent/",
+  "max_agents": 4
+}

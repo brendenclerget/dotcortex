@@ -1,0 +1,49 @@
+schema: 1
+log: checkout-redesign
+title: "Checkout redesign"
+scope: feature
+feature: web.APP-008
+owner: carol@example.com
+updated: "2026-10-05"
+milestones:
+  - {key: beta, title: "Beta"}
+decisions:
+  - id: D6
+    title: "One-page checkout"
+    question: "Should checkout fit on one page?"
+    status: open
+    blocks: beta
+  - id: D7
+    title: "Payout hold period"
+    question: "How many days should a new seller's payouts be held?"
+    owner: carol@example.com
+    status: open
+    priority: critical
+    blocks: beta
+    options:
+      - {key: a, label: "7 days (recommended)"}
+      - {key: b, label: "14 days"}
+    tickets: [{id: api.APP-004}]
+  - id: D8
+    title: "Address autocomplete"
+    question: "Should the address field autocomplete?"
+    status: answered
+    answer: "Yes, with the browser's own autofill"
+    answered_at: "2026-10-04"
+    answered_by: carol@example.com
+    tickets: [{id: APP-003}]
+  - id: D9
+    title: "Guest checkout (first draft)"
+    question: "Allow guest checkout?"
+    status: superseded
+    superseded_by: D10
+  - id: D10
+    title: "Guest checkout"
+    question: "Should guests check out without an account?"
+    status: open
+    blocks: beta
+    deferred_at: "2026-10-04"
+    options:
+      - {key: a, label: "Yes, with an email address only (recommended)"}
+      - {key: b, label: "No, an account is required"}
+    tickets: [{id: APP-008}]

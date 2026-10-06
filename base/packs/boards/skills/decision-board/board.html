@@ -1,0 +1,954 @@
+<meta charset="utf-8">
+<title>Team Decision Board</title>
+<style>
+/* Layout: the team's decision logs on the left (log, then ticket family, answered/total), the cards on the right;
+   one column with a category select on phones. Neutral slate/amber tokens; --attn marks what needs an owner now. */
+:root{
+  --bg:#f5f6f8;--surface:#ffffff;--surface-2:#eceef2;--ink:#1a1e24;--ink-2:#3b424c;--muted:#5d6672;
+  --line:#dce0e6;--line-strong:#c1c7d0;
+  --accent:#243246;--accent-ink:#2d5a8e;--accent-soft:#e5edf7;--on-accent:#f3f6fa;--accent-muted:#c3cfdf;
+  --attn:#f1d36b;--attn-ink:#3a2e00;--attn-soft:#faf2d3;
+  --good:#256b3a;--good-soft:#e0efe4;--warn:#8a5300;--warn-soft:#fbeed2;--bad:#a3352a;--bad-soft:#f8e1dd;--info:#2a5b91;--info-soft:#e1eaf6;
+  --focus:#2d5a8e;--shadow:0 1px 2px rgb(26 30 36 / .06),0 6px 20px rgb(26 30 36 / .06);
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;--display:var(--body);
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  /* state colours: needs an owner now / later / answered, not applied / decided */
+  --s-now-bg:var(--attn);--s-now-ink:var(--attn-ink);--s-now-line:#a8850f;
+  --s-later-bg:var(--surface-2);--s-later-ink:var(--ink-2);--s-later-line:var(--line-strong);
+  --s-wait-bg:var(--accent-soft);--s-wait-ink:var(--accent-ink);--s-wait-line:var(--accent-ink);
+  --s-done-bg:var(--good-soft);--s-done-ink:var(--good);--s-done-line:var(--good);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#111418;--surface:#1a1e24;--surface-2:#242931;--ink:#edf0f3;--ink-2:#cdd3da;--muted:#98a2ad;--line:#2e343c;--line-strong:#434b55;
+  --accent:#18212e;--accent-ink:#9dc1ea;--accent-soft:#1e2a3a;--on-accent:#edf2f8;--accent-muted:#a7b6ca;
+  --attn:#f1d36b;--attn-ink:#2a2100;--attn-soft:#383018;
+  --good:#8fd3a0;--good-soft:#1b3022;--warn:#f0c46a;--warn-soft:#3a2f16;--bad:#f19a8c;--bad-soft:#3d221e;--info:#9cc3f0;--info-soft:#1c2a3b;
+  --focus:#f1d36b;--shadow:none;--s-now-line:#f1d36b}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#111418;--surface:#1a1e24;--surface-2:#242931;--ink:#edf0f3;--ink-2:#cdd3da;--muted:#98a2ad;--line:#2e343c;--line-strong:#434b55;
+  --accent:#18212e;--accent-ink:#9dc1ea;--accent-soft:#1e2a3a;--on-accent:#edf2f8;--accent-muted:#a7b6ca;
+  --attn:#f1d36b;--attn-ink:#2a2100;--attn-soft:#383018;
+  --good:#8fd3a0;--good-soft:#1b3022;--warn:#f0c46a;--warn-soft:#3a2f16;--bad:#f19a8c;--bad-soft:#3d221e;--info:#9cc3f0;--info-soft:#1c2a3b;
+  --focus:#f1d36b;--shadow:none;--s-now-line:#f1d36b}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body);margin:0}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--accent-ink)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+code{font:13px/1.4 var(--mono);background:var(--surface-2);padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+
+/* Header and state filters */
+.band{background:var(--accent);color:var(--on-accent)}
+.band .in{display:flex;align-items:center;gap:8px 20px;flex-wrap:wrap;padding:10px 20px;min-height:56px;max-width:1280px;margin:0 auto}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto;flex-wrap:wrap}
+.word{font:800 24px/1 var(--display);letter-spacing:-.02em}
+.brand>span:not(.word){font-size:15px;color:var(--accent-muted)}
+.brand a{color:var(--accent-muted);font-size:14px}
+.conn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--accent-muted)}
+.conn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--attn)}
+.conn.off::before{background:transparent;border:2px solid var(--accent-muted)}
+.tools{position:sticky;top:0;z-index:6;background:color-mix(in srgb,var(--bg) 94%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.tools .in{display:flex;gap:8px;align-items:center;padding:8px 20px;flex-wrap:wrap;max-width:1280px;margin:0 auto}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-right:auto}
+.tab{min-height:44px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:999px;padding:0 14px 0 10px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab b{font:800 15px/1 var(--display)}
+.tab[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab .dot{width:22px;height:22px;border-radius:50%;display:inline-grid;place-items:center;background:var(--surface-2);color:var(--ink-2)}
+.tab .dot svg.i{width:14px;height:14px}
+.tab[data-sf="now"] .dot{background:var(--s-now-bg);color:var(--s-now-ink)}
+.tab[data-sf="later"] .dot{background:var(--s-later-bg);color:var(--s-later-ink)}
+.tab[data-sf="waiting"] .dot{background:var(--s-wait-bg);color:var(--s-wait-ink)}
+.tab[data-sf="decided"] .dot{background:var(--s-done-bg);color:var(--s-done-ink)}
+.field{min-height:44px;border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:0 12px;font-size:16px}
+#q{flex:0 1 220px;min-width:0}
+.pending{display:none;align-items:center;gap:10px;background:var(--attn);color:var(--attn-ink);border-radius:8px;padding:0 0 0 12px;font-size:14px;font-weight:600;min-height:44px;flex:1 1 100%}
+.pending.show{display:flex}
+.pending span{flex:1;min-width:0}
+.pending code{background:color-mix(in srgb,var(--attn-ink) 12%,transparent);color:var(--attn-ink)}
+.btn{min-height:44px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);border-radius:8px;padding:0 14px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:center;text-decoration:none}
+.btn:hover{border-color:var(--accent-ink)}
+.btn.small{font-size:13px;padding:0 12px}
+.pending .btn{background:var(--attn-ink);color:var(--attn);border-color:var(--attn-ink)}
+.linkbtn{background:none;border:0;padding:0 4px;min-height:44px;color:var(--accent-ink);font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* Layout: categories on the left (answered/total), the list and cards on the right */
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);gap:0 36px;max-width:1280px;margin:0 auto;padding:0 20px;align-items:start}
+.rail{position:sticky;top:var(--bar,62px);max-height:calc(100vh - var(--bar,62px));overflow:auto;padding:18px 0 60px;font-size:14px;overscroll-behavior:contain}
+.rail h2{font:700 12px/1.2 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:16px 10px 4px}
+.rail ol{list-style:none;margin:0;padding:0;display:grid;gap:1px}
+.rail button{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;min-height:44px;padding:5px 10px;border:0;border-radius:8px;background:none;color:var(--ink);text-align:left;cursor:pointer;line-height:1.3}
+.rail button:hover{background:var(--surface-2)}
+.rail button[aria-current="true"]{background:var(--accent-soft);color:var(--accent-ink);font-weight:600;box-shadow:inset 3px 0 0 var(--accent-ink)}
+.rail button .t{overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.rail button .n{font:600 13px var(--mono);color:var(--muted);white-space:nowrap}
+.rail button.done .n{color:var(--good)}
+.rail button.none{opacity:.55}
+.rail .all{font-weight:700}
+.rail .legend{font-size:13px;color:var(--muted);margin:14px 10px 0}
+main{padding:18px 0 96px;min-width:0;max-width:820px}
+.mhead{display:grid;gap:10px;margin:0 0 18px}
+.mhead h1{font:800 24px/1.25 var(--display);letter-spacing:-.015em;margin:0;text-wrap:balance}
+.mhead .sub{font-size:15px;color:var(--ink-2);margin:0;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.mhead .sub a{font:600 13px var(--mono)}
+#cat{display:none;width:100%;font-weight:600}
+.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.frow .lbl{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin-right:4px}
+.seg{min-height:40px;border:1.5px solid var(--line-strong);background:var(--surface);border-radius:999px;padding:0 12px 0 9px;font-size:13.5px;font-weight:600;color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.seg b{font:800 14px/1 var(--display);color:var(--ink)}
+.seg svg.i{width:15px;height:15px}
+.seg[aria-pressed="true"]{border-color:var(--accent-ink);background:var(--accent-soft);color:var(--accent-ink)}
+.seg[aria-pressed="true"] b{color:inherit}
+.pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);font-size:14px;font-weight:600;padding:0 4px 0 12px;min-height:40px}
+.pill button{min-height:36px;min-width:36px;border:0;border-radius:999px;background:none;color:inherit;cursor:pointer;font-size:18px;line-height:1}
+.pill button:hover{background:var(--surface)}
+.intro{margin:0;color:var(--ink-2);font-size:15px;max-width:68ch}
+.fam{margin:0 0 28px}
+.fam-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid var(--line);scroll-margin-top:calc(var(--bar,60px) + 12px)}
+.fam-h h2{font:800 19px/1.3 var(--display);margin:0;letter-spacing:-.01em;min-width:0;flex:1 1 260px}
+.fam-h h2 a{font:600 13px var(--mono);text-decoration:none;margin-right:6px}
+.fam-h .n{font-size:14px;color:var(--muted)}
+.empty{color:var(--muted);font-size:15px;margin:12px 0}
+
+/* State chip: a word, an icon and a colour */
+.st{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px 3px 8px;font-size:13px;font-weight:700;line-height:1.4;white-space:nowrap}
+.st svg.i{width:15px;height:15px}
+.st.now{background:var(--s-now-bg);color:var(--s-now-ink)}
+.st.later,.st.deferred,.st.superseded{background:var(--s-later-bg);color:var(--s-later-ink)}
+.st.waiting{background:var(--s-wait-bg);color:var(--s-wait-ink)}
+.st.decided{background:var(--s-done-bg);color:var(--s-done-ink)}
+.ico{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;flex:none}
+.ico svg.i{width:15px;height:15px}
+.ico.now{background:var(--s-now-bg);color:var(--s-now-ink)}
+.ico.later,.ico.deferred,.ico.superseded{background:var(--s-later-bg);color:var(--s-later-ink)}
+.ico.waiting{background:var(--s-wait-bg);color:var(--s-wait-ink)}
+.ico.decided{background:var(--s-done-bg);color:var(--s-done-ink)}
+/* Kind: shapes new work / confirms built work (outlined, so it never reads as a state) */
+.kind{display:inline-flex;align-items:center;gap:5px;border-radius:5px;padding:0 7px;font-size:13px;font-weight:700;line-height:1.6;border:1.5px solid currentColor;white-space:nowrap}
+.kind svg.i{width:14px;height:14px}
+.kind.shapes{color:var(--info);background:var(--info-soft)}
+.kind.confirms{color:var(--good);background:var(--good-soft)}
+.seg.k-shapes svg.i{color:var(--info)}
+.seg.k-confirms svg.i{color:var(--good)}
+
+/* Decision card */
+.card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--s-later-line);border-radius:12px;box-shadow:var(--shadow);padding:18px 22px 20px;display:grid;gap:16px;margin-bottom:14px;scroll-margin-top:calc(var(--bar,60px) + 12px)}
+.card.now{border-left-color:var(--s-now-line)}
+.card.waiting{border-left-color:var(--s-wait-line)}
+.card.decided{border-left-color:var(--s-done-line)}
+.card.flash{outline:2px solid var(--focus);outline-offset:2px}
+.head{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.id{font:600 13px var(--mono);color:var(--accent-ink)}
+a.id{text-decoration:none}a.id:hover{text-decoration:underline}
+.tag{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1px 7px;font-size:13px;font-weight:600;background:var(--surface-2);color:var(--ink-2);line-height:1.5}
+.tag svg.i{width:14px;height:14px}
+.tag.rec{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.built{background:var(--attn-soft);color:var(--ink);border:1px solid color-mix(in srgb,var(--attn-ink) 25%,transparent)}
+.tag.warn,.tag.p-high{background:var(--warn-soft);color:var(--warn)}
+.tag.bad,.tag.p-critical{background:var(--bad-soft);color:var(--bad)}
+.tag.good{background:var(--good-soft);color:var(--good)}
+.q{font:800 22px/1.3 var(--display);letter-spacing:-.015em;margin:2px 0 0;text-wrap:pretty;max-width:40ch}
+.whyline{display:flex;gap:8px;align-items:flex-start;margin:8px 0 0;font-size:15px;color:var(--ink-2)}
+.whyline svg.i{margin-top:2px;color:var(--muted)}
+.card.now .whyline{color:var(--ink)}
+.sec{display:grid;gap:8px;min-width:0}
+.sec>h4{font:700 13px/1.2 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;display:flex;align-items:center;gap:8px}
+.why{margin:0;color:var(--ink-2);max-width:68ch}
+.built{border-left:4px solid var(--attn);background:var(--attn-soft);border-radius:0 8px 8px 0;padding:10px 14px;display:grid;gap:8px}
+.built p{margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:baseline;gap:6px;flex-wrap:wrap;border:1px solid var(--line-strong);background:var(--surface);border-radius:6px;padding:2px 8px;font-size:13px;max-width:100%}
+.chip .k{font:13px var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
+.chip .v{font:600 13px var(--mono);color:var(--ink);overflow-wrap:anywhere}
+.chip .s{color:var(--muted)}
+.chip.drift{border-color:var(--warn);background:var(--warn-soft)}
+.chip.absent .v{color:var(--muted)}
+
+/* Options: one click answers */
+.opts{display:grid;gap:8px}
+.opt{display:grid;grid-template-columns:22px 1fr;gap:2px 10px;align-items:start;text-align:left;width:100%;min-height:52px;border:1.5px solid var(--line-strong);border-radius:10px;padding:10px 14px 10px 12px;background:var(--surface);cursor:pointer}
+.opt:hover{border-color:var(--accent-ink)}
+.opt .rad{width:18px;height:18px;border-radius:50%;border:2px solid var(--line-strong);margin-top:3px;display:grid;place-items:center}
+.opt .ol{font-size:16px;font-weight:600;line-height:1.4}
+.opt .ol .tag{margin-left:4px;vertical-align:1px}
+.opt small{grid-column:2;font-size:14px;color:var(--muted);line-height:1.4}
+.opt.keep{border-color:var(--good);background:color-mix(in srgb,var(--good-soft) 60%,var(--surface))}
+.opt.keep .rad{border-color:var(--good)}
+.opt.keep .ol{font-size:17px}
+.opt[aria-pressed="true"]{border-color:var(--accent-ink);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent-ink)}
+.opt[aria-pressed="true"] .rad{border-color:var(--accent-ink)}
+.opt[aria-pressed="true"] .rad::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent-ink)}
+.alt{display:flex;flex-wrap:wrap;gap:8px}
+.alt .btn[aria-pressed="true"]{border-color:var(--accent-ink);background:var(--accent-soft);color:var(--accent-ink)}
+.mine{display:grid;gap:6px;border:1px solid var(--s-wait-line);background:var(--s-wait-bg);border-radius:10px;padding:10px 14px}
+.mine p{margin:0}
+.mine .lbl{font-size:13px;font-weight:700;color:var(--s-wait-ink);letter-spacing:.04em;text-transform:uppercase}
+textarea{width:100%;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);padding:10px 12px;font-size:16px;min-height:72px;resize:vertical}
+textarea.need{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+label.tl{font-size:14px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px}
+.statebar{display:flex;align-items:center;gap:4px 12px;flex-wrap:wrap}
+.statebar:not(:has(button,.save[data-s]:not([data-s=""]))){display:none}
+.hint{font-size:14px;color:var(--muted);margin:0}
+.save{margin-left:auto;display:inline-grid;font-size:13px;color:var(--muted);white-space:nowrap}
+.save>span{grid-area:1/1;visibility:hidden;text-align:right}
+.save[data-s="saving"]>.s-saving,.save[data-s="saved"]>.s-saved,.save[data-s="error"]>.s-error{visibility:visible}
+.save>.s-error{color:var(--warn)}
+.stale{font-size:14px;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:8px 12px;margin:0;display:flex;gap:8px}
+.rec-line{margin:0;font-size:15px}
+.notes{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.notes li{border-left:3px solid var(--accent-muted);padding:2px 0 2px 12px;font-size:15px;color:var(--ink-2)}
+.notes b{color:var(--ink)}
+.ref{display:block;font:13px var(--mono);color:var(--muted);overflow-wrap:anywhere;margin-top:2px}
+.tix{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.tix li{display:flex;gap:2px 10px;flex-wrap:wrap;align-items:baseline;font-size:15px;padding:8px 0;border-top:1px solid var(--line)}
+.tix li:first-child{border-top:0;padding-top:0}
+.tix a.id{min-width:5.5em}
+.tix .tt{min-width:0;flex:1 1 200px}
+.tix .ts{font-size:13px;font-weight:600;color:var(--ink-2)}
+.crit{display:flex;flex-wrap:wrap;gap:4px;flex-basis:100%}
+.crit .tag{font-weight:500}
+.items{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.items li{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:start;padding:8px 10px;border:1px solid var(--line);border-radius:8px}
+.items .iid{font:600 13px var(--mono);color:var(--accent-ink);padding-top:2px;min-width:2.5em}
+.items .it{min-width:0;overflow-wrap:anywhere;font-size:15px}
+.items .it .chips{margin-top:4px}
+.items .btn{min-height:44px;margin:-6px -4px -6px 0}
+details.more>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--accent-ink);list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"▸";font-size:12px}
+details.more[open]>summary::before{content:"▾"}
+details.more>div{display:grid;gap:16px;padding-top:6px}
+.src{font-size:13px;color:var(--muted);margin:0}
+.issues{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.issues li{font-size:14px;padding:6px 10px;background:var(--warn-soft);border-radius:6px}
+.issues li.error{background:var(--bad-soft)}
+.issues li.info{background:var(--surface-2)}
+/* Decided: a readable list, open one to see the whole card */
+details.hist{background:var(--surface);border:1px solid var(--line);border-radius:10px;margin-bottom:6px;scroll-margin-top:calc(var(--bar,60px) + 12px)}
+details.hist>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;gap:2px 10px;align-items:center;padding:8px 14px;min-height:52px}
+details.hist>summary::-webkit-details-marker{display:none}
+details.hist .ht{font-weight:600;min-width:0}
+details.hist .ha{grid-column:3/5;color:var(--ink-2);font-size:14px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+details.hist .hd{font-size:13px;color:var(--muted);white-space:nowrap}
+details.hist[open]>summary{border-bottom:1px solid var(--line)}
+.hist-body{padding:12px}
+.hist-body .card{box-shadow:none;border:0;padding:4px;margin:0}
+.foot{font-size:13px;color:var(--muted);margin-top:24px}
+/* People and logs */
+#boardname{font-size:15px;color:var(--accent-muted)}
+#whose{font-size:14px;color:var(--on-accent);font-weight:600}
+#viewas{flex:0 1 220px;min-width:0;font-weight:600;cursor:pointer}
+.vlabel{font-size:13px;font-weight:700;color:var(--muted);white-space:nowrap}
+.who{display:inline-flex;align-items:center;border-radius:999px;padding:0 8px;font-size:12.5px;font-weight:700;line-height:1.6;background:var(--accent-soft);color:var(--accent-ink);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who.you{background:var(--attn);color:var(--attn-ink)}
+.rail h2 .scope{font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)}
+.rail .logline{font-size:13px;color:var(--muted);margin:0 10px 4px}
+.ro-note{margin:0;padding:8px 20px;background:var(--warn-soft);color:var(--warn);font-size:14px;font-weight:600}
+.dup{font-size:14px;color:var(--bad);background:var(--bad-soft);border-radius:8px;padding:8px 12px;margin:0}
+
+@media (max-width:1100px){
+  .layout{display:block;padding:0 16px}
+  .rail{display:none}
+  #cat{display:block}
+  main{max-width:none}
+}
+@media (max-width:700px){
+  .band .in{padding:8px 16px;min-height:48px}
+  .tools{position:static}
+  .tools .in{padding:8px 16px}
+  .word{font-size:22px}
+  .tabs{margin-right:0;flex:1 1 100%}
+  #viewas{flex:1 1 100%}
+  .vlabel{display:none}
+  .tab{padding:0 11px 0 7px;font-size:13px}
+  #q{flex:1 1 100%}
+  main{padding-top:14px}
+  .mhead h1{font-size:21px}
+  .card{padding:14px 14px 16px;gap:14px;border-radius:10px}
+  .q{font-size:20px}
+  details.hist>summary{grid-template-columns:auto auto 1fr;padding:8px 10px}
+  details.hist .hd{grid-column:2/4;grid-row:3}
+  details.hist .ha{grid-column:1/4}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-now" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 1-1 1.7v.5M12 17h.01"/></symbol>
+  <symbol id="i-later" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-deferred" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></symbol>
+  <symbol id="i-waiting" viewBox="0 0 24 24"><path d="M4 12h13M12 6l6 6-6 6"/></symbol>
+  <symbol id="i-decided" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-superseded" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/><path d="M5 6v12"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v4M12 18h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+  <symbol id="i-shapes" viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l7-5 7 5v11"/><path d="M10 21v-6h4v6"/></symbol>
+  <symbol id="i-confirms" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/></symbol>
+  <symbol id="i-all" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+</svg>
+
+<header class="band">
+  <div class="in">
+    <div class="brand"><span class="word">Decisions</span><span id="boardname"></span><span id="whose" data-viewer=""></span><a id="tb-link" href="#" target="_blank" rel="noopener" hidden>Ticket board</a></div>
+    <span class="conn off" id="conn" role="status">Connecting…</span>
+  </div>
+</header>
+<div class="tools"><div class="in">
+  <label class="vlabel" for="viewas">Viewing as</label>
+  <select id="viewas" class="field"><option value="">Everyone</option></select>
+  <div class="tabs" id="tabs" role="group" aria-label="Show decisions that are"></div>
+  <label class="sr" for="q">Search decisions</label>
+  <input id="q" class="field" type="search" placeholder="Search all decisions" autocomplete="off">
+  <div class="pending" id="pending" role="status"><span><span id="pending-n">0</span> saved, awaiting apply: run <code>/decision-board-apply</code></span><button class="btn" id="copy-cmd" type="button">Copy</button></div>
+</div></div>
+<p class="ro-note" id="ronote" hidden>You can read this board but not answer on it: ask its owner for Contributor (can interact) access. Anything you pick stays in this browser.</p>
+<div class="layout">
+  <nav class="rail" id="rail" aria-label="Categories"></nav>
+  <main id="main"><p class="empty">Loading decisions…</p></main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const icon = n => `<svg class="i" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+  // Links: research pages and other URLs in decision text open in a new tab.
+  const inline = s => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/https:\/\/[^\s<)"]+[^\s<)".,;:]/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + "s")}`;
+  const fmtVal = v => v === null ? "null" : Array.isArray(v) ? "[" + v.map(fmtVal).join(", ") + "]" : typeof v === "object" ? JSON.stringify(v) : String(v);
+  const PRIO = { critical: "Critical", high: "High", medium: "Medium", low: "Low" };
+  const TSTATUS = { PLANNING: "Planning", TODO: "To do", IN_PROGRESS: "In progress", BLOCKED: "Blocked", REVIEW: "In review", DONE: "Done" };
+  // One state per decision: a word, an icon and a colour (the colour classes match the state keys).
+  const STATE = { now: "Needs you now", later: "Later", deferred: "Deferred", waiting: "Answered, not applied", decided: "Decided", superseded: "Superseded" };
+  // State filters. "Yours" is the open decisions the viewer owns (with Everyone: every owner's). "Open" is everything the logs still have open (now, later, deferred, answered but not applied):
+  // the same number the ticket board shows as "N decisions open".
+  const SFS = [["yours", "Yours", "now"], ["open", "Open", "all"], ["now", "Now", "now"], ["later", "Later", "later"], ["waiting", "Answered, not applied", "waiting"], ["decided", "Decided", "decided"]];
+  const viewOfState = st => ({ now: "now", later: "later", deferred: "later", waiting: "waiting", decided: "decided", superseded: "decided" }[st]);
+  // Two kinds: the answer decides what gets built, or it confirms something already built.
+  const KIND = { shapes: ["Shapes new work", "shapes"], confirms: ["Confirms built work", "confirms"] };
+  const REC_RE = /\s*\([^()]*\brecommend(?:ed|ation)\b[^()]*\)/i;
+  const shortLabel = l => String(l || "").replace(REC_RE, "").trim();
+
+  let data = null, byId = {}, famById = {}, query = "", db = null, dbState = "connecting";
+  // Filters: state × kind × category (log, then ticket family) × one ticket (from #ticket-<key>, the ticket board's link).
+  let sf = "yours", kf = "all", cat = "all", tix = null;
+  const calls = {}, applied = {}, ack = {};
+  const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+                  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} } };
+  const local = store.get("dotcortex-decision-board", {});
+  const ui = store.get("dotcortex-decision-board-ui", {});
+  // Identity: the signed-in viewer (user capability), whose view this is, and whether the db refuses their writes.
+  const ID = { me: null, uid: null };
+  let viewer = "", readOnly = false;
+  const VKEY = "dotcortex-decision-board-viewer";
+  // People: an owner is an email or a name, matched without case. viewer "" = Everyone.
+  const same = (a, b) => !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+  const isMe = v => !!(ID.me && v && (same(v, ID.me.email) || same(v, ID.me.name)));
+  const mine = v => !viewer || same(v, viewer) || (isMe(viewer) && isMe(v));
+  const shortWho = v => { v = String(v || ""); return v.includes("@") ? v.split("@")[0] : v; };
+  const whoChip = v => v ? `<span class="who${isMe(v) ? " you" : ""}" title="Owner: ${esc(v)}">${esc(shortWho(v))}${isMe(v) ? " (you)" : ""}</span>` : `<span class="who" title="No owner">no owner</span>`;
+  if (SFS.some(([v]) => v === ui.sf)) sf = ui.sf;
+  if (["all", "shapes", "confirms"].includes(ui.kf)) kf = ui.kf;
+  if (typeof ui.cat === "string") cat = ui.cat;
+  const saveUi = () => store.set("dotcortex-decision-board-ui", { sf, kf, cat });
+  const fkey = () => `${sf}|${kf}|${cat}|${tix || ""}`;
+  // Answered during this visit: the card stays where it was (collapsed to your answer) until a filter changes.
+  const keep = {};
+  const changing = {}; // "Change" pressed on an answered card: show the options again
+
+  // ---------- answers ----------
+  const callOf = id => calls[id] || local[id] || null;
+  const builtOpt = d => (d.options || []).find(o => o.built);
+  // Keys the db accepts for this decision (unchanged since board v1, so older saved answers stay valid).
+  function validKeys(d) {
+    if (d.status !== "open" || d.duplicate) return d.duplicate ? [] : ["custom"];
+    return [...(d.options || []).map(o => o.key), ...(d.default_built ? ["default"] : []), "custom", "defer"];
+  }
+  const answerFor = (d, c) => {
+    if (!c || !c.choice) return "";
+    if (c.choice === "custom") return (c.answer || "").trim();
+    if (c.choice === "default") return d.default_built || "";
+    if (c.choice === "defer") return "";
+    const o = (d.options || []).find(o => o.key === c.choice); return o ? o.label : "";
+  };
+  // A custom answer needs real words: an item prefix alone ("FC3: ") is still a draft.
+  const meaningful = t => String(t || "").split("\n").some(l => l.trim() && !/^[A-Za-z]{1,4}\d+[a-z]?:\s*$/.test(l.trim()));
+  const valid = (d, c) => !!(c && c.choice && (c.choice !== "custom" || meaningful(c.answer)) && validKeys(d).includes(c.choice));
+  const isApplied = id => { const c = callOf(id), a = applied[id]; return !!(a && c && c.choice && a.decidedAt && c.updatedAt && a.decidedAt >= c.updatedAt); };
+  function stateOf(d) {
+    const c = callOf(d.id);
+    if (d.status === "superseded") return "superseded";
+    if (c && c.choice && valid(d, c)) {
+      if (!isApplied(d.id)) return "waiting";
+      // Applied, but this page was built before decisions.yml recorded it: never send it back to Now.
+      if (d.status === "open" && !d.deferred) return c.choice === "defer" ? "deferred" : "decided";
+    }
+    if (d.status === "answered") return "decided";
+    if (d.deferred) return "deferred";
+    return d.lane === "later" ? "later" : "now";
+  }
+  const isDraft = d => { const c = callOf(d.id); return !!(c && c.choice && !valid(d, c) && !isApplied(d.id)); };
+  // Where a complete answer is: only in this browser, on its way to the db, or saved where the apply step reads it.
+  const saveKind = id => { const c = callOf(id); if (!c || !valid(byId[id], c) || isApplied(id)) return null; if (!db || readOnly) return "local"; if (failed[id]) return "error"; return ack[id] === c.updatedAt ? "saved" : "saving"; };
+  const isPending = id => stateOf(byId[id]) === "waiting" && saveKind(id) === "saved";
+  const answeredNow = d => ["waiting", "decided"].includes(stateOf(d));
+
+  // ---------- filters ----------
+  const inState = (d, s) => { const v = viewOfState(stateOf(d));
+    return s === "yours" ? (v === "now" || v === "later") && !d.duplicate && mine(d.owner || "") : s === "open" ? v !== "decided" : v === s; };
+  const inKind = (d, k) => k === "all" || d.kind === k;
+  const inCat = (d, c) => c === "all" || d.family === c;
+  const inTix = (d, t) => !t || d.tickets.some(x => x.id === t);
+  const matchesAll = d => inState(d, sf) && inKind(d, kf) && inCat(d, cat) && inTix(d, tix);
+  const inView = d => matchesAll(d) || keep[d.id] === fkey();
+  const openFor = t => data.decisions.filter(d => d.status === "open" && d.tickets.some(x => x.id === t));
+
+  // ---------- the why-line: why this decision is in its state ----------
+  const ms = key => (data.milestones || []).find(m => m.key === key);
+  const tref = u => u.found ? `${u.id} (${u.title})` : u.parent ? `${u.id}, part of ${u.parent} (${u.parent_title})` : u.id;
+  const tids = d => d.tickets.map(t => t.id).join(", ");
+  function whyLine(d, st) {
+    const c = callOf(d.id), b = builtOpt(d), gates = (d.unblocks || []).map(tref).join(", "), m = d.milestone;
+    if (st === "waiting") {
+      const k = saveKind(d.id);
+      if (k === "local") return "Saved in this browser only: the apply step can't read it from here.";
+      if (k === "error") return "Couldn't save yet; retrying. Nobody else sees this answer until it saves.";
+      if (k === "saving") return "Saving your answer…";
+      if (c.choice === "defer") return "Not now. /decision-board-apply records the deferral.";
+      if (d.kind === "confirms") return c.choice === d.keep_key ? "Saved: keep what's built, no change. /decision-board-apply records it." : `Saved: this changes built work, so it needs follow-up on ${tids(d)} once /decision-board-apply records it.`;
+      return "Saved. /decision-board-apply records it; nothing changes until then.";
+    }
+    if (st === "decided") {
+      const a = applied[d.id];
+      if (d.status === "open") return `Applied${a && a.summary ? `: ${a.summary}` : ""}. The board catches up when it's next published.`;
+      return `Decided ${d.answered_at || ""}${d.follow_up && d.follow_up_status === "pending" ? " · the work it needs is still pending" : ""}${a && a.summary ? ` · applied: ${a.summary}` : ""}.`;
+    }
+    if (st === "superseded") return `${replacedTxt(d)}.`;
+    if (st === "deferred") return `${d.deferred_at ? `Deferred on ${d.deferred_at}` : "Not now"}${d.deferred_note ? ` (${d.deferred_note})` : ""}.${d.blocks !== "later" && m ? ` It still blocks ${m.title.toLowerCase()}.` : ""}`;
+    if (d.duplicate) return `This id is already used in ${d.duplicate_of}: it needs a new id before anyone can answer it.`;
+    if (isDraft(d)) return "The answer has no text yet, so nothing has been sent.";
+    if (d.nothing_built && d.status === "open") return `Nothing is built for this yet: work waits on the answer, and any answer is follow-up work.${m ? ` ${m.title} waits on it.` : ""}`;
+    if (d.kind === "confirms") {
+      const what = b ? `“${shortLabel(b.label)}”` : d.keep_key && d.keep_key !== "default" ? `“${shortLabel((d.options.find(o => o.key === d.keep_key) || {}).label)}”` : "described below";
+      return `Already built as ${what} on ${tids(d)}. Keep what's built and nothing changes; any other answer is follow-up work.${st === "later" ? " Not needed for launch." : ""}`;
+    }
+    if (st === "later") return d.gating && gates ? `Needed before ${gates} starts; not needed yet.` : "Not needed yet. Nothing is built; the answer decides what gets built.";
+    if (d.gating && gates) return `Work on ${gates} hasn't started: the answer decides what gets built.`;
+    return `Nothing is built yet: the answer decides what gets built.${m ? ` ${m.title} waits on it.` : ""}`;
+  }
+
+  // ---------- rendering ----------
+  const stChip = st => `<span class="st ${st}">${icon(st)}${STATE[st]}</span>`;
+  const kindTag = d => KIND[d.kind] ? `<span class="kind ${d.kind}" title="${esc(d.kind === "confirms" ? "Something is already built; keeping it changes nothing" : "The ticket hasn't started; the answer decides what gets built")} (${esc(d.kind_source || "")})">${icon(d.kind)}${KIND[d.kind][0]}</span>` : "";
+  // Tickets are linked by key (<project>.<ID> with more than one project): <ticket board>#<key>.
+  const tLink = (id, label) => data.ticket_board_url ? `<a class="id" href="${esc(data.ticket_board_url)}#${esc(id)}" target="_blank" rel="noopener" title="Open ${esc(id)} on the ticket board">${esc(label || id)}</a>` : `<span class="id">${esc(label || id)}</span>`;
+  // A decision moved back onto its ticket as an ask (in-flight rule): moved_to "<ticket key>:5".
+  const movedTo = d => d.moved_key ? { t: d.moved_key, n: d.moved_n } : null;
+  const replacedTxt = d => { const mv = movedTo(d); return mv ? `Moved to ${mv.t} ask ${mv.n} on the ticket board: the work is in flight, so it's answered there` : `Replaced by ${d.superseded_by}`; };
+  const replacedHtml = d => { const mv = movedTo(d); return mv ? `Moved to ${tLink(mv.t, `${mv.t} ask ${mv.n}`)} on the ticket board: the work is in flight, so it's answered there.` : `Replaced by ${dLink(d.superseded_by)}. Answer or revise it there.`; };
+  const dLink = id => `<a href="#${esc(id)}" data-jump="${esc(id)}">${esc(id)}</a>`;
+  function settingChips(rows) {
+    if (!rows || !rows.length || !rows.some(r => r.checked)) return ""; // shown only when the build ran with --settings
+    return `<div class="chips">${rows.map(r => {
+      const live = r.live_found ? (typeof r.live === "string" && r.live.startsWith("<erb>") ? "set by environment" : fmtVal(r.live)) : null;
+      const drift = r.live_found && r.match === false;
+      const title = r.note ? ` title="${esc(r.note)}"` : "";
+      return `<span class="chip${drift ? " drift" : ""}${r.live_found ? "" : " absent"}"${title}><span class="k">${esc(r.key)}</span>`
+        + (r.live_found ? `<span class="v">${esc(live)}</span>${drift ? `<span class="s">(recorded ${esc(fmtVal(r.recorded))})</span>` : ""}`
+                        : `<span class="v">${r.has_recorded ? esc(fmtVal(r.recorded)) : "—"}</span><span class="s">not in the settings files</span>`)
+        + `</span>`; }).join("")}</div><p class="src">Values from ${esc((data.settings_sources || []).map(x => x.file).join(", ") || "the settings files")} in this checkout, not the running app.</p>`;
+  }
+  function itemsSec(d, controls) {
+    if (!d.items?.length) return "";
+    const byKey = Object.fromEntries(d.settings.map(r => [r.key, r]));
+    return `<section class="sec"><h4>What's in it (${d.items.length})</h4><ul class="items">${d.items.map(it => {
+      const rows = (it.settings || []).map(k => byKey[k]).filter(Boolean);
+      return `<li><span class="iid">${esc(it.id)}</span><span class="it">${inline(it.text)}${settingChips(rows)}</span>${controls ? `<button class="btn small" type="button" data-change="${esc(d.id)}" data-item="${esc(it.id)}" aria-label="Change ${esc(it.id)}">Change</button>` : "<span></span>"}</li>`; }).join("")}</ul></section>`;
+  }
+  // Tickets, by title: what it blocks from starting, what it blocks from closing, and related work.
+  function ticketsSec(d) {
+    const ub = d.unblocks || [], ubIds = new Set(ub.map(u => u.id));
+    const rest = d.tickets.filter(t => !ubIds.has(t.id) && !ub.some(u => u.parent === t.id));
+    if (!ub.length && !rest.length) return "";
+    const row = t => `<li>${t.found ? tLink(t.id) : t.parent ? tLink(t.parent, t.id) : tLink(t.id)}<span class="tt">${t.found ? esc(t.title) : t.parent ? `Not created yet · part of ${esc(t.parent)}, ${esc(t.parent_title)}` : "<em>not found</em>"}</span>${t.found ? `<span class="ts">${esc(t.archived ? "Archived" : TSTATUS[t.status] || t.status || "")}</span>` : ""}
+</li>`;
+    const closing = d.status === "open" && d.kind === "confirms";
+    let h = "";
+    if (ub.length) h += `<section class="sec"><h4>Blocks work starting on</h4><ul class="tix">${ub.map(row).join("")}</ul></section>`;
+    if (rest.length) h += `<section class="sec"><h4>${ub.length ? "Related" : closing ? "Blocks closing" : "Tickets"}</h4><ul class="tix">${rest.map(row).join("")}</ul></section>`;
+    return h;
+  }
+  function critSec(d) {
+    const ts = d.tickets.filter(t => (t.criteria || []).length);
+    return ts.length ? `<section class="sec"><h4>Criteria it settles</h4><ul class="tix">${ts.map(t => `<li>${tLink(t.id)}<span class="crit">${t.criteria.map(c => `<span class="tag ${c.checked ? "good" : ""}" title="${esc(c.text || c.ref)}">${icon(c.checked ? "check" : "open")}${esc(c.id || c.ref.slice(0, 32))}${c.checked ? " done" : " open"}</span>`).join("")}</span></li>`).join("")}</ul></section>` : "";
+  }
+  function notesSec(d) {
+    const ns = d.review_notes || [];
+    return ns.length ? `<section class="sec"><h4>Reviewer notes</h4><ul class="notes">${ns.map(n => `<li><b>${esc(n.by || "Note")}:</b> ${inline(n.text)}${n.ref ? `<span class="ref">${esc(n.ref)}</span>` : ""}</li>`).join("")}</ul></section>` : "";
+  }
+  function saveState(id) {
+    if (!db || !callOf(id)) return "";
+    if (failed[id]) return "error";
+    if (pendingW[id] || inflight[id]) return "saving";
+    return ack[id] && ack[id] === callOf(id).updatedAt ? "saved" : "";
+  }
+  const saveHtml = id => `<span class="save" data-save="${esc(id)}" data-s="${saveState(id)}" role="status"><span class="s-saving">Saving…</span><span class="s-saved">Saved</span><span class="s-error">Couldn't save, retrying</span></span>`;
+  const noteOpen = {};
+  // The one-click choices. Built work: "Keep what's built" first (the built option, an option that keeps it, or the
+  // board's own default), every other option marked as follow-up work. New work: the options as written.
+  function choiceList(d) {
+    const opts = d.options || [], keepK = d.kind === "confirms" ? d.keep_key : null;
+    const list = opts.map(o => ({ key: o.key, label: shortLabel(o.label), detail: o.detail, rec: o.key === d.recommended, built: !!o.built, keep: o.key === keepK }));
+    if (d.default_built && (keepK === "default" || !opts.length || d.items?.length))
+      list.unshift({ key: "default", label: d.items?.length ? "Confirm all as built" : "Keep what's built", detail: "No change: what's built today (above) becomes the answer.", built: true, keep: d.kind === "confirms" || !opts.length });
+    if (d.kind === "confirms") { list.sort((a, b) => b.keep - a.keep); list.forEach(o => { if (!o.keep) o.follow = true; }); }
+    return list;
+  }
+  function answerSec(d, st) {
+    const c = callOf(d.id) || {}, open = d.status === "open", applied_ = isApplied(d.id);
+    if (d.duplicate) return `<section class="sec"><p class="dup">${icon("alert")} ${esc(d.label)} is already used in ${esc(d.duplicate_of)}. Give this one the next free id (${esc(data.next_decision_id || "")}) in ${esc(d.log)} before it can be answered.</p></section>`;
+    if (d.status === "superseded") return `<section class="sec"><p class="rec-line">${replacedHtml(d)}</p></section>`;
+    const mine = (st === "waiting" && !changing[d.id]) || (st === "decided" && open);
+    const showOpts = open && !mine;
+    const stale = st === "waiting" && c.fingerprint && c.fingerprint !== d.fingerprint;
+    let h = "";
+    if (mine) h += `<div class="mine"><span class="lbl">Your answer${d.kind === "confirms" && c.choice === d.keep_key ? " · keeps what's built" : ""}</span><p><strong>${c.choice === "defer" ? "Not now" : inline(shortLabel(answerFor(d, c)))}</strong></p></div>`;
+    if (showOpts) {
+      const list = choiceList(d), rec = list.find(o => o.rec), why = (d.review_notes || [])[0];
+      h += `<div class="opts" role="group" aria-label="Answers for ${esc(d.id)}">${list.map(o => `<button type="button" class="opt${o.keep ? " keep" : ""}" data-pick="${esc(d.id)}" data-key="${esc(o.key)}" aria-pressed="${c.choice === o.key}"><span class="rad" aria-hidden="true"></span><span class="ol">${inline(o.label)}${o.keep ? ` <span class="tag good">${icon("check")}Keep what's built · no change</span>` : o.built ? ` <span class="tag built">Built today</span>` : ""}${o.rec ? ` <span class="tag rec">Recommended</span>` : ""}${o.follow ? ` <span class="tag">Follow-up work</span>` : ""}</span>${o.detail ? `<small>${inline(o.detail)}</small>` : ""}${o.rec && why ? `<small>Why: ${inline(why.text)} (${esc(why.by)})</small>` : ""}</button>`).join("")}</div>
+        ${(d.options || []).length && !rec ? `<p class="hint">No recommendation recorded. “Built today” is what exists, not advice.</p>` : ""}
+        <div class="alt"><button type="button" class="btn small" data-pick="${esc(d.id)}" data-key="custom" aria-pressed="${c.choice === "custom"}">Something else…</button><button type="button" class="btn small" data-pick="${esc(d.id)}" data-key="defer" aria-pressed="${c.choice === "defer"}">${icon("deferred")}Not now</button></div>`;
+    }
+    if (c.choice === "custom" && (showOpts || !open) && !applied_)
+      h += `<div><label class="tl" for="ans-${esc(d.id)}">${open ? "Your answer, in your words" : "Your revised answer"}</label><textarea id="ans-${esc(d.id)}" data-answer="${esc(d.id)}" class="${!meaningful(c.answer) ? "need" : ""}" placeholder="${d.items?.length ? "Say which items change, e.g. “FC3: 10 per listing”" : "Needed to send it"}">${esc(c.answer || "")}</textarea></div>`;
+    const actions = [];
+    if (c.choice && !applied_) {
+      if ((c.note || "").trim() || noteOpen[d.id]) h += `<div><label class="tl" for="note-${esc(d.id)}">${c.choice === "defer" ? "Until when, or why (optional)" : "Note (optional)"}</label><textarea id="note-${esc(d.id)}" data-note="${esc(d.id)}">${esc(c.note || "")}</textarea></div>`;
+      else actions.push(`<button class="btn small" type="button" data-addnote="${esc(d.id)}">${c.choice === "defer" ? "Add until when" : "Add a note"}</button>`);
+    }
+    if (stale) h += `<p class="stale">${icon("alert")}<span>This decision changed after you answered. Check your answer still stands.</span></p>`;
+    if (st === "waiting" && !changing[d.id] && open) actions.push(`<button class="btn small" type="button" data-changeans="${esc(d.id)}">Change answer</button>`);
+    if (c.choice && !applied_) actions.push(`<button class="linkbtn" type="button" data-clear="${esc(d.id)}">Clear</button>`);
+    if (!open && !(c.choice && !applied_)) actions.push(`<button class="btn small" type="button" data-revise="${esc(d.id)}">Revise the answer</button>`);
+    return `<section class="sec" aria-label="Your answer">${h}<div class="statebar">${actions.join("")}${saveHtml(d.id)}</div></section>`;
+  }
+  function headHtml(d, st) {
+    const t = [stChip(st)];
+    if (d.status === "open" || st === "waiting") t.push(kindTag(d));
+    t.push(`<span class="id">${esc(d.label || d.id)}</span>`, whoChip(d.owner));
+    if (keep[d.id] && st === "waiting") t.push(`<span class="tag">Answered this visit</span>`);
+    if (d.status === "open" && d.priority && ["critical", "high"].includes(d.priority)) t.push(`<span class="tag p-${esc(d.priority)}">${esc(PRIO[d.priority])}</span>`);
+    if (d.gating && (d.unblocks || []).length && d.status === "open") t.push(`<span class="tag">${icon("lock")}Gates ${esc(d.unblocks.map(u => u.id).join(", "))}</span>`);
+    else if (d.tickets.length) t.push(d.tickets.map(x => tLink(x.id)).join(" "));
+    if (d.status === "answered" && d.follow_up_status === "pending") t.push(`<span class="tag warn">Work pending</span>`);
+    if ((d.issues || []).length) t.push(`<span class="tag bad">${icon("alert")}${plural(d.issues.length, "data issue")}</span>`);
+    return t.join("");
+  }
+  // Card order: state and kind → question → why-line → why it matters → built today → choices → tickets → the rest collapsed.
+  function card(d) {
+    const st = stateOf(d), open = d.status === "open";
+    const src = [d.log_title || d.log, d.source, d.source_ref].filter(Boolean).map(esc).join(" · ");
+    const compact = st === "waiting" && !changing[d.id] || (st === "decided" && open);
+    const why = d.context ? `<section class="sec"><h4>Why it matters</h4><p class="why">${inline(d.context)}</p></section>` : "";
+    const builtTxt = d.default_built ? inline(d.default_built) : "Nothing built: work waits on the answer, and any answer is follow-up work.";
+    const built = open ? `<section class="sec"><h4>${d.kind === "confirms" && d.default_built ? "Built today · keeping it changes nothing" : "Built today"}</h4><div class="built"><p>${builtTxt}</p>${settingChips(d.settings)}</div></section>`
+      : `<section class="sec"><h4>What was decided${d.answered_at ? ` · ${esc(d.answered_at)}` : ""}</h4><div class="built"><p><strong>${inline(d.answer || (d.status === "superseded" ? replacedTxt(d) : ""))}</strong></p>${d.built ? `<p>${inline(d.built)}</p>` : ""}${settingChips(d.settings)}</div>
+          ${d.default_built ? `<p class="src">Built before the answer: ${inline(d.default_built)}</p>` : ""}${d.follow_up ? `<p class="src">Follow-up (${esc(d.follow_up_status || "pending")}): ${inline(d.follow_up)}</p>` : ""}</section>`;
+    const items = itemsSec(d, open && !compact);
+    const extra = `${notesSec(d)}${critSec(d)}<p class="src">${src}</p>${(d.issues || []).length ? `<ul class="issues">${d.issues.map(x => `<li class="${esc(x.level)}">${esc(x.message)}</li>`).join("")}</ul>` : ""}`;
+    return `<article class="card ${st}" id="d-${esc(d.id)}" data-card="${esc(d.id)}" aria-labelledby="q-${esc(d.id)}">
+      <div>
+        <div class="head" data-head="${esc(d.id)}">${headHtml(d, st)}</div>
+        <h3 class="q" id="q-${esc(d.id)}">${inline(d.question)}</h3>
+        <p class="whyline" data-why="${esc(d.id)}">${icon(st)}<span>${esc(whyLine(d, st))}</span></p>
+      </div>
+      ${compact ? "" : why + built + items}
+      ${answerSec(d, st)}
+      ${compact ? `<details class="more"><summary>Details</summary><div>${why}${built}${items}${ticketsSec(d)}${extra}</div></details>`
+        : `${ticketsSec(d)}<details class="more"><summary>Reviewer notes and source</summary><div>${extra}</div></details>`}
+    </article>`;
+  }
+  const histOpen = {};
+  function histRow(d) {
+    const st = stateOf(d), c = callOf(d.id);
+    const ans = d.answer || (d.status === "superseded" ? replacedTxt(d) : answerFor(d, c));
+    return `<details class="hist" data-hist="${esc(d.id)}" id="h-${esc(d.id)}"${histOpen[d.id] ? " open" : ""}><summary><span class="ico ${st}" title="${esc(STATE[st])}">${icon(st)}<span class="sr">${esc(STATE[st])}</span></span><span class="id">${esc(d.label || d.id)}</span><span class="ht">${esc(d.title)}${d.follow_up_status === "pending" ? ` <span class="tag warn">Work pending</span>` : ""}</span><span class="hd">${esc(d.answered_at || (st === "superseded" ? "superseded" : ""))}</span><span class="ha">${inline(ans)}</span></summary>
+      <div class="hist-body">${histOpen[d.id] ? card(d) : ""}</div></details>`;
+  }
+  const isRow = d => ["decided", "superseded"].includes(stateOf(d)) && !keep[d.id];
+  // A category's answered/total: every decision in the ticket family (superseded ones aside). Answered counts your
+  // answers saved here that haven't been applied yet as well as the logs'.
+  function famCount(fid) {
+    const ds = data.decisions.filter(d => d.family === fid && d.status !== "superseded");
+    return { done: ds.filter(answeredNow).length, total: ds.length };
+  }
+  // The sidebar: each decision log (team log first, then feature logs with their feature ticket), then its ticket
+  // families, most urgent first, with answered/total.
+  const logFams = () => (data.logs || []).map(l => ({ l, fams: data.families.filter(f => f.log === l.log) })).filter(x => x.fams.length);
+  const logHead = l => `${esc(l.title)} <span class="scope">· ${l.scope === "feature" ? "feature" : "team"}</span>`;
+  function renderRail() {
+    const all = data.decisions.filter(d => d.status !== "superseded");
+    const n = f => data.decisions.some(d => d.family === f.id && inState(d, sf) && inKind(d, kf));
+    let html = `<ol><li><button type="button" class="all" data-cat="all" aria-current="${cat === "all" && !tix}"><span class="t">All decisions</span><span class="n">${all.filter(answeredNow).length}/${all.length}</span></button></li></ol>`;
+    for (const { l, fams } of logFams()) {
+      html += `<h2>${logHead(l)}</h2>${l.feature_key ? `<p class="logline">Feature ${tLink(l.feature_key)}${l.owner ? ` · ${whoChip(l.owner)}` : ""}</p>` : l.owner ? `<p class="logline">Owner ${whoChip(l.owner)}</p>` : ""}<ol>${fams.map(f => { const c = famCount(f.id);
+        return `<li><button type="button" data-cat="${esc(f.id)}" class="${c.done === c.total ? "done" : ""}${n(f) ? "" : " none"}" aria-current="${cat === f.id && !tix}" title="${esc(f.ticket || "")} · ${esc(f.title)}"><span class="t">${esc(f.title)}</span><span class="n">${c.done}/${c.total}</span></button></li>`; }).join("")}</ol>`;
+    }
+    html += `<p class="legend">answered / total in each category. Answered includes answers waiting to be applied.</p>`;
+    $("#rail").innerHTML = html;
+  }
+  // Phones: the same categories as a select.
+  function catSelect() {
+    const all = data.decisions.filter(d => d.status !== "superseded");
+    return `<label class="sr" for="cat">Category</label><select id="cat" class="field">${`<option value="all"${cat === "all" ? " selected" : ""}>All decisions · ${all.filter(answeredNow).length}/${all.length} answered</option>`}${logFams().map(({ l, fams }) => `<optgroup label="${esc(l.title)}">${fams.map(f => { const c = famCount(f.id); return `<option value="${esc(f.id)}"${cat === f.id ? " selected" : ""}>${esc(f.title)} · ${c.done}/${c.total}</option>`; }).join("")}</optgroup>`).join("")}</select>`;
+  }
+  function kindRow() {
+    const base = data.decisions.filter(d => inState(d, sf) && inCat(d, cat) && inTix(d, tix));
+    const k = x => base.filter(d => inKind(d, x)).length;
+    return `<div class="frow" role="group" aria-label="Kind"><span class="lbl">Kind</span>
+      <button type="button" class="seg" data-kf="all" aria-pressed="${kf === "all"}">${icon("all")}Any <b>${base.length}</b></button>
+      ${Object.entries(KIND).map(([key, [label]]) => `<button type="button" class="seg k-${key}" data-kf="${key}" aria-pressed="${kf === key}" title="${esc(key === "shapes" ? "The ticket hasn't started: the answer decides what gets built" : "Something is already built: keep it (no change) or ask for follow-up work")}">${icon(key)}${label} <b>${k(key)}</b></button>`).join("")}</div>`;
+  }
+  const matches = d => { const q = query.trim().toLowerCase(); if (!q) return true;
+    return JSON.stringify([d.id, d.title, d.question, d.context, d.default_built, d.answer, d.items, d.options, d.tickets.map(t => [t.id, t.title])]).toLowerCase().includes(q); };
+  const boardIssues = () => data.diagnostics.filter(x => x.level !== "info" && !x.decision);
+  const INTRO = {
+    yours: "Open decisions you own, most urgent first (with Everyone: every owner's, each with its owner). Pick an answer and it's saved; <code>/decision-board-apply</code> records it.",
+    open: "Everything still open: pick an answer and it's saved; <code>/decision-board-apply</code> records it. Each card says its kind: <b>Shapes new work</b> (nothing built yet, the answer decides what gets built) or <b>Confirms built work</b> (keep what's built and nothing changes).",
+    now: "Needed now, in milestone order.",
+    later: "Not needed yet; answer early if you know. Deferred: its owner said not now.",
+    waiting: "Answers saved here that haven't been applied yet. Nothing changes in the product until <code>/decision-board-apply</code> runs; you can still change them.",
+    decided: "What the team has decided, newest first. “Work pending” means the build it needs hasn't happened yet. Open one to see what was asked and what got built, or to revise it.",
+  };
+  function mainHead() {
+    const tb = esc(data.ticket_board_url || "#");
+    let h1 = "All decisions", sub = "";
+    if (tix) {
+      const t = (data.decisions.flatMap(d => d.tickets).find(x => x.id === tix && x.found)) || { id: tix, title: "", status: "" };
+      const op = openFor(tix), w = op.filter(d => stateOf(d) === "waiting").length, dec = data.decisions.filter(d => d.status !== "open" && d.tickets.some(x => x.id === tix)).length;
+      h1 = `${tix}${t.title ? `: ${t.title}` : ""}`;
+      sub = `<span>${plural(op.length, "decision")} open${w ? ` (${w} answered here, waiting to be applied)` : ""} · ${dec} decided</span>${t.status ? `<span>${esc(TSTATUS[t.status] || t.status)}</span>` : ""}<a href="${tb}#${esc(tix)}" target="_blank" rel="noopener">${esc(tix)} on the ticket board</a>`;
+      return `<div class="mhead"><div class="frow"><span class="pill">Only decisions for ${esc(tix)}<button type="button" data-untix aria-label="Show every ticket">×</button></span></div><h1>${esc(h1)}</h1><p class="sub">${sub}</p>${kindRow()}</div>`;
+    }
+    if (cat !== "all" && famById[cat]) {
+      const f = famById[cat], c = famCount(cat), op = data.decisions.filter(d => d.family === cat && d.status === "open").length;
+      h1 = f.title;
+      sub = `<span>${c.done}/${c.total} answered · ${op} open</span>${f.ticket ? tLink(f.ticket) : ""}<span>${esc((data.logs.find(l => l.log === f.log) || {}).title || f.log)}</span>`;
+    } else {
+      const all = data.decisions.filter(d => d.status !== "superseded");
+      sub = `<span>${all.filter(answeredNow).length}/${all.length} answered · ${data.decisions.filter(d => d.status === "open").length} open</span>`;
+    }
+    return `<div class="mhead">${catSelect()}<h1>${esc(h1)}</h1><p class="sub">${sub}</p>${kindRow()}<p class="intro">${INTRO[sf]}</p></div>`;
+  }
+  function famSection(fid, ds) {
+    const f = famById[fid] || { id: fid, title: fid }, c = famCount(fid);
+    return `<section class="fam" id="f-${esc(fid)}"><div class="fam-h"><h2>${f.ticket ? tLink(f.ticket) : ""}${esc(f.title)}</h2><span class="n">${c.done}/${c.total} answered${f.status ? ` · ${esc(TSTATUS[f.status] || f.status)}` : ""}</span></div>
+      ${ds.map(d => isRow(d) ? histRow(d) : card(d)).join("")}</section>`;
+  }
+  function renderMain() {
+    let html = "";
+    if (query.trim()) {
+      const g = data.decisions.filter(matches);
+      html += `<div class="mhead"><h1>Search</h1><p class="intro">${plural(g.length, "decision")} match “${esc(query.trim())}”, in every state and category.</p></div>` + (g.length ? g.map(d => isRow(d) ? histRow(d) : card(d)).join("") : `<p class="empty">Nothing matches.</p>`);
+    } else {
+      html += mainHead();
+      let ds = data.decisions.filter(inView);
+      if (sf === "decided") ds = ds.sort((a, b) => String(b.answered_at || "").localeCompare(String(a.answered_at || "")) || (+b.id.slice(1) - +a.id.slice(1)));
+      if (!ds.length) html += `<p class="empty">Nothing here${kf !== "all" ? ` of this kind` : ""}.${sf !== "open" || kf !== "all" ? " Try Open and Any kind." : ""}</p>`;
+      else if (sf === "decided" || tix || cat !== "all") html += (cat !== "all" || tix) && sf !== "decided" ? ds.map(d => isRow(d) ? histRow(d) : card(d)).join("") : ds.map(histRow).join("");
+      else for (const f of data.families) { const g = ds.filter(d => d.family === f.id); if (g.length) html += famSection(f.id, g); }
+    }
+    const bi = boardIssues(), di = data.decisions.filter(d => (d.issues || []).length).length;
+    html += `<p class="foot">Built from ${esc((data.source?.logs || []).join(", ") || "no decision logs")}${data.source?.rev ? ` at ${esc(data.source.rev)}${data.source.dirty ? " (with uncommitted edits)" : ""}` : ""}${(data.settings_sources || []).length ? ` and ${esc(data.settings_sources.map(x => x.file).join(", "))}` : ""}, ${esc(new Date(data.generated_at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }))}.${bi.length || di ? ` Data issues: ${bi.map(x => esc(x.message)).join("; ")}${di ? ` ${plural(di, "decision")} flagged on their cards.` : ""}` : ""}</p>`;
+    $("#main").innerHTML = html;
+  }
+  function renderHead() {
+    if (!data) return;
+    const base = data.decisions.filter(d => inKind(d, kf) && inCat(d, cat) && inTix(d, tix));
+    const html = SFS.map(([v, l, ic]) => `<button type="button" class="tab" data-sf="${v}" aria-pressed="${v === sf && !query.trim()}"><span class="dot">${icon(ic)}</span>${esc(l)}: <b>${base.filter(d => inState(d, v)).length}</b></button>`).join("");
+    const tabs = $("#tabs");
+    if (tabs.innerHTML !== html) { const f = document.activeElement && tabs.contains(document.activeElement) ? document.activeElement.dataset.sf : null; tabs.innerHTML = html; if (f) tabs.querySelector(`[data-sf="${f}"]`)?.focus(); }
+    const pend = data.decisions.filter(d => isPending(d.id) && saveKind(d.id) !== "local").length;
+    $("#pending").classList.toggle("show", pend > 0); $("#pending-n").textContent = pend === 1 ? "1 answer" : `${pend} answers`;
+    const c = $("#conn"); c.className = "conn" + (db ? "" : " off");
+    c.textContent = db ? (readOnly ? "Connected · read only" : "Connected · answers are shared") : dbState === "connecting" ? "Connecting…" : "This browser only";
+    $("#tb-link").href = data.ticket_board_url || "#"; $("#tb-link").hidden = !data.ticket_board_url;
+    $("#boardname").textContent = data.title || "";
+    const wh = $("#whose"); wh.dataset.viewer = viewer; wh.textContent = viewer ? `· ${shortWho(viewer)}${isMe(viewer) ? " (you)" : ""}` : "· Everyone";
+    const vopts = [["", "Everyone"], ...(data.people || []).map(p => [p, `${shortWho(p)}${isMe(p) ? " (you)" : ""}`])];
+    const vs = $("#viewas"), vh = vopts.map(([v, l]) => `<option value="${esc(v)}" title="${esc(v)}">${esc(l)}</option>`).join("");
+    if (vs.dataset.h !== vh) { vs.innerHTML = vh; vs.dataset.h = vh; }
+    if (vs.value !== viewer) vs.value = viewer;
+    $("#ronote").hidden = !readOnly;
+  }
+  // ---------- typing safety ----------
+  // A text field someone is typing in is never replaced: while one inside #main has focus, render() only
+  // patches state chips, why-lines and save state in place and remembers to rebuild once the field loses focus.
+  const isText = el => !!el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && ["text", "search"].includes(el.type)));
+  const fieldId = el => (el && el.dataset && (el.dataset.answer || el.dataset.note)) || null;
+  const editing = () => { const ae = document.activeElement; return isText(ae) && $("#main").contains(ae) ? ae : null; };
+  const editingId = () => fieldId(editing());
+  let dirty = false;
+  const staleCards = new Set(); // remote changes adopted while typing elsewhere: swap just those cards
+  function patchCard(id) {
+    const d = byId[id]; if (!d) return;
+    const st = stateOf(d), q = CSS.escape(id);
+    document.querySelectorAll(`[data-head="${q}"]`).forEach(el => { const h = headHtml(d, st); if (el.innerHTML !== h) el.innerHTML = h; });
+    document.querySelectorAll(`[data-why="${q}"]`).forEach(el => { const h = `${icon(st)}<span>${esc(whyLine(d, st))}</span>`; if (el.innerHTML !== h) el.innerHTML = h; });
+    document.querySelectorAll(`[data-save="${q}"]`).forEach(el => { const v = saveState(id); if (el.dataset.s !== v) el.dataset.s = v; });
+    document.querySelectorAll(`[data-card="${q}"]`).forEach(el => { for (const s of Object.keys(STATE)) el.classList.toggle(s, s === st); });
+  }
+  // A stable selector for the focused control, so focus survives a rebuild.
+  function focusKey(el) {
+    if (!el || !($("#main").contains(el) || $("#rail").contains(el))) return null;
+    if (el.id) return "#" + CSS.escape(el.id);
+    for (const k of ["pick", "clear", "change", "changeans", "revise", "addnote", "jump", "cat", "kf", "untix"]) {
+      if (el.dataset[k] == null) continue;
+      let sel = `${el.tagName.toLowerCase()}[data-${k}="${CSS.escape(el.dataset[k])}"]`;
+      if (el.dataset.item) sel += `[data-item="${CSS.escape(el.dataset.item)}"]`;
+      if (el.dataset.key) sel += `[data-key="${CSS.escape(el.dataset.key)}"]`;
+      return sel;
+    }
+    return null;
+  }
+  // The sticky toolbar wraps on phones: scroll targets clear its real height.
+  const setBar = () => { const t = $(".tools"); if (t) document.documentElement.style.setProperty("--bar", t.offsetHeight + "px"); };
+  addEventListener("resize", setBar);
+  function render(keepScroll = true) {
+    if (!data) return;
+    setBar();
+    const ed = editing();
+    if (ed) {
+      dirty = true;
+      for (const id of staleCards) { const el = document.getElementById("d-" + id); if (el && !el.contains(ed) && byId[id]) el.outerHTML = card(byId[id]); }
+      staleCards.clear();
+      document.querySelectorAll("#main [data-card]").forEach(el => patchCard(el.dataset.card));
+      renderRail(); renderHead();
+      return;
+    }
+    dirty = false; staleCards.clear();
+    const y = scrollY, fk = focusKey(document.activeElement);
+    const boxes = [...document.querySelectorAll("#main textarea[id]")].map(el => [el.id, el.style.height, el.scrollTop]);
+    renderMain(); renderRail(); renderHead();
+    for (const [id, h, top] of boxes) { const el = document.getElementById(id); if (!el) continue; if (h) el.style.height = h; el.scrollTop = top; }
+    if (keepScroll) scrollTo(0, y);
+    if (fk) { const el = document.querySelector(fk); if (el) el.focus({ preventScroll: true }); }
+  }
+
+  // ---------- db writes (unchanged contract: decisions/<ID> {choice, answer, note, updatedAt, fingerprint}) ----------
+  // Text is written 800ms after the last keystroke, and at once on blur, tab switch or page hide. Buttons write
+  // immediately. Every write's updatedAt is remembered, so its echo from onSnapshot is recognised and never copied
+  // back over what's in the text field (the db copy is normalised, e.g. a trimmed answer).
+  const TEXT_DEBOUNCE = 800, RETRY = 4000;
+  const pendingW = {}, inflight = {}, timers = {}, failed = {}, sent = {}, incoming = {}, remoteAt = {};
+  async function flush(id) {
+    if (!db || inflight[id] || !pendingW[id]) return;
+    const body = pendingW[id]; delete pendingW[id]; inflight[id] = true;
+    (sent[id] ||= new Set()).add(body.updatedAt);
+    let ok = false;
+    try { await db.doc("decisions/" + id).set(body); ok = true; ack[id] = body.updatedAt; failed[id] = false; }
+    catch (e) {
+      // Below "can interact" access the db refuses writes (invalid_argument): keep answers in this browser only.
+      if (e && e.code === "invalid_argument") { readOnly = true; inflight[id] = false; delete pendingW[id]; patchCard(id); renderHead(); return; }
+      failed[id] = true; if (!pendingW[id]) pendingW[id] = body; }
+    inflight[id] = false;
+    if (!ok) { clearTimeout(timers[id]); timers[id] = setTimeout(() => { timers[id] = null; flush(id); }, RETRY); }
+    else if (pendingW[id] && !timers[id]) flush(id);
+    patchCard(id); renderHead();
+  }
+  function flushNow(id) { clearTimeout(timers[id]); timers[id] = null; flush(id); }
+  const flushAll = () => Object.keys(pendingW).forEach(flushNow);
+  function change(id, patch, { rerender = true, text = false } = {}) {
+    const d = byId[id];
+    const next = { ...(callOf(id) || {}), ...patch, updatedAt: new Date().toISOString(), fingerprint: d.fingerprint };
+    calls[id] = next; local[id] = next; store.set("dotcortex-decision-board", local);
+    // Only a complete answer is actionable. An incomplete one (custom with no text) or a cleared one is written as
+    // choice: null, so /decision-board-apply never acts on something that has since changed. `by` is the opaque user id.
+    const body = valid(d, next)
+      ? { choice: next.choice, answer: answerFor(d, next), note: next.note || "", updatedAt: next.updatedAt, fingerprint: next.fingerprint, by: ID.uid || null }
+      : { choice: null, draft: next.choice || null, answer: next.answer || "", note: next.note || "", updatedAt: next.updatedAt, fingerprint: next.fingerprint, by: ID.uid || null };
+    if (db && !readOnly) {
+      pendingW[id] = body; clearTimeout(timers[id]); timers[id] = null;
+      if (text) timers[id] = setTimeout(() => { timers[id] = null; flush(id); }, TEXT_DEBOUNCE); else flush(id);
+    }
+    if (rerender) render(); else { patchCard(id); renderRail(); renderHead(); }
+  }
+  function adopt(id, b) { // a newer write from elsewhere (another tab, device or teammate)
+    const merged = b.choice == null && b.draft ? { ...b, choice: b.draft } : b; // an unsaved draft stays a draft here
+    calls[id] = merged; local[id] = merged; ack[id] = b.updatedAt; delete incoming[id]; staleCards.add(id);
+  }
+  const newerThanMine = (id, b) => { const m = local[id]; return !m || !m.updatedAt || !!(b.updatedAt && b.updatedAt > m.updatedAt); };
+
+  // Blur flushes the field's pending write. Queued snapshot updates and the deferred rebuild wait until the
+  // pointer is released and focus has settled, so a click that blurred the field still lands on its target.
+  let pointerHeld = false, settleT = 0;
+  const scheduleSettle = () => { clearTimeout(settleT); settleT = setTimeout(settle, 300); };
+  function settle() {
+    if (pointerHeld) return;
+    const ed = editingId();
+    let adopted = false;
+    for (const id of Object.keys(incoming)) { if (id === ed) continue; const b = incoming[id]; delete incoming[id]; if (newerThanMine(id, b)) { adopt(id, b); adopted = true; } }
+    if (adopted) store.set("dotcortex-decision-board", local);
+    if (dirty || adopted) render();
+  }
+  document.addEventListener("pointerdown", () => { pointerHeld = true; }, true);
+  const released = () => { pointerHeld = false; if (dirty || Object.keys(incoming).length) scheduleSettle(); };
+  document.addEventListener("pointerup", released, true);
+  document.addEventListener("pointercancel", released, true);
+  document.addEventListener("focusout", e => {
+    const id = fieldId(e.target);
+    if (id) {
+      if (incoming[id] && newerThanMine(id, incoming[id])) { clearTimeout(timers[id]); timers[id] = null; delete pendingW[id]; adopt(id, incoming[id]); store.set("dotcortex-decision-board", local); dirty = true; }
+      else { delete incoming[id]; flushNow(id); }
+    }
+    if (isText(e.target)) scheduleSettle();
+  });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushAll(); });
+  addEventListener("pagehide", flushAll);
+
+  // ---------- events ----------
+  // Any filter change starts clean: answered-this-visit cards and open "Change" states are let go.
+  function setFilters(f, { scroll = true } = {}) {
+    if ("sf" in f) sf = f.sf; if ("kf" in f) kf = f.kf; if ("cat" in f) cat = f.cat; if ("tix" in f) tix = f.tix;
+    query = ""; $("#q").value = ""; saveUi();
+    for (const k of Object.keys(keep)) delete keep[k]; for (const k of Object.keys(changing)) delete changing[k];
+    render(false); if (scroll) scrollTo(0, 0);
+  }
+  const clearHash = () => { try { history.replaceState(null, "", location.pathname + location.search); } catch (err) {} };
+  // Show one decision: in its category, in the state filter that holds it.
+  function reveal(id) {
+    const d = byId[id]; if (!d) return;
+    const v = viewOfState(stateOf(d));
+    if (!inView(d) || query.trim()) setFilters({ sf: v === "decided" ? "decided" : "open", kf: "all", cat: d.family, tix: null }, { scroll: false });
+    if (isRow(d)) { histOpen[id] = true; render(); }
+    const el = document.getElementById("d-" + id) || document.getElementById("h-" + id);
+    if (el) { el.scrollIntoView({ block: "start" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1600); }
+  }
+  // The ticket board links here as #ticket-<key>: only that ticket's decisions, open ones first.
+  function showTicket(t) { setFilters({ sf: "open", kf: "all", cat: "all", tix: t }); }
+  document.addEventListener("input", e => {
+    const el = e.target;
+    if (el.dataset.answer) { change(el.dataset.answer, { answer: el.value }, { rerender: false, text: true }); el.classList.toggle("need", !el.value.trim()); }
+    if (el.dataset.note) change(el.dataset.note, { note: el.value }, { rerender: false, text: true });
+    if (el.id === "q") { query = el.value; render(false); }
+  });
+  document.addEventListener("toggle", e => { const d = e.target; if (d.dataset && d.dataset.hist) { const was = !!histOpen[d.dataset.hist]; histOpen[d.dataset.hist] = d.open; if (d.open && !was) d.querySelector(".hist-body").innerHTML = card(byId[d.dataset.hist]); } }, true);
+  document.addEventListener("click", e => {
+    const a = e.target.closest("a[data-jump]");
+    if (a) { e.preventDefault(); try { history.replaceState(null, "", "#" + a.dataset.jump); } catch (err) {} reveal(a.dataset.jump); return; }
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.sf) return setFilters({ sf: b.dataset.sf });
+    if (b.dataset.kf) return setFilters({ kf: b.dataset.kf }, { scroll: false });
+    if (b.dataset.cat) { if (tix) clearHash(); return setFilters({ cat: b.dataset.cat, tix: null }); }
+    if (b.hasAttribute("data-untix")) { clearHash(); return setFilters({ tix: null }); }
+    if (b.dataset.pick) {
+      const id = b.dataset.pick, key = b.dataset.key, c = callOf(id) || {};
+      if (!keep[id]) keep[id] = fkey();
+      delete changing[id];
+      if (c.choice === key && valid(byId[id], c)) return render();
+      change(id, key === "custom" ? { choice: "custom", answer: c.choice === "custom" ? c.answer || "" : "" } : { choice: key });
+      if (key === "custom") { const el = document.querySelector(`textarea[data-answer="${CSS.escape(id)}"]`); if (el) el.focus(); }
+      return;
+    }
+    if (b.dataset.addnote) { const id = b.dataset.addnote; noteOpen[id] = true; keep[id] ||= fkey(); render(); const el = document.getElementById("note-" + id); if (el) el.focus(); return; }
+    if (b.dataset.changeans) { changing[b.dataset.changeans] = true; keep[b.dataset.changeans] ||= fkey(); return render(); }
+    if (b.dataset.clear) { delete changing[b.dataset.clear]; keep[b.dataset.clear] ||= fkey(); return change(b.dataset.clear, { choice: null, answer: "", note: "" }); }
+    if (b.dataset.revise) { const id = b.dataset.revise; keep[id] ||= fkey(); histOpen[id] = true; change(id, { choice: "custom", answer: "" }); const el = document.querySelector(`textarea[data-answer="${CSS.escape(id)}"]`); if (el) el.focus(); return; }
+    if (b.dataset.change) {
+      const id = b.dataset.change, c = callOf(id) || {}, pre = `${b.dataset.item}: `;
+      keep[id] ||= fkey();
+      const cur = c.choice === "custom" ? (c.answer || "") : "";
+      change(id, { choice: "custom", answer: cur.includes(pre) ? cur : (cur ? cur.replace(/\s*$/, "\n") : "") + pre });
+      const el = document.querySelector(`textarea[data-answer="${CSS.escape(id)}"]`); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+      return;
+    }
+    if (b.id === "copy-cmd") { let p; try { p = navigator.clipboard.writeText("/decision-board-apply"); } catch (err) { p = Promise.reject(err); } p.then(() => { b.textContent = "Copied"; }).catch(() => { b.textContent = "/decision-board-apply"; }); }
+  });
+  document.addEventListener("change", e => {
+    if (e.target.id === "cat") setFilters({ cat: e.target.value, tix: null });
+    if (e.target.id === "viewas") { viewer = e.target.value; store.set(VKEY, { v: viewer }); for (const k of Object.keys(keep)) delete keep[k]; render(false); }
+  });
+  // Deep links: #D45 (or #d-D45) opens a decision; #ticket-<key> shows that ticket's decisions. Only plain
+  // #token anchors reach the page, so the ticket form uses "-", never "=".
+  let firstReveal = null; // a deep link is applied again once saved answers load, since they can move cards
+  // A ticket key from a link, matched exactly, then ignoring case, then by plain id when only one project has it.
+  const normT = t => { const ks = [...new Set(data.decisions.flatMap(d => d.tickets.map(x => x.id)))], lc = t.toLowerCase();
+    const hit = ks.find(k => k === t) || ks.find(k => k.toLowerCase() === lc); if (hit) return hit;
+    const byLabel = [...new Set(data.decisions.flatMap(d => d.tickets.filter(x => String(x.label).toLowerCase() === lc).map(x => x.id)))];
+    return byLabel.length === 1 ? byLabel[0] : t; };
+  const hashLink = () => { const h = decodeURIComponent(location.hash || "");
+    let m = /^#(?:d-)?([Dd]\d+)$/.exec(h); if (m) return { d: m[1].toUpperCase() };
+    m = /^#ticket-(.+)$/i.exec(h); return m && data ? { t: normT(m[1]) } : null; };
+  const follow = l => { if (!l) return; if (l.d) reveal(l.d); else if (l.t) showTicket(l.t); };
+  addEventListener("hashchange", () => follow(hashLink()));
+
+  // ---------- load ----------
+  const ready = fetch("decisions-data.json").then(r => r.json()).then(d => {
+    // A decision whose id repeats another log's keeps its id as label and gets a page-only id (never written).
+    // Ticket rows: id becomes the key (<project>.<ID>), label the plain id.
+    d.decisions.forEach(x => { x.label = x.id; if (x.duplicate) x.id = `${x.id}-dup-${x.log}`;
+      (x.tickets || []).forEach(t => { t.ref = t.id; t.id = t.key || t.id; }); });
+    d.people = d.people || []; d.logs = d.logs || [];
+    data = d; byId = Object.fromEntries(d.decisions.map(x => [x.id, x]));
+    pickViewer();
+    famById = Object.fromEntries((d.families || []).map(f => [f.id, f]));
+    if (cat !== "all" && !famById[cat]) cat = "all";
+    render(false);
+    const l = hashLink(); follow(l);
+    firstReveal = l;
+  }).catch(() => { $("#main").innerHTML = `<p class="empty">Couldn't load the decisions. Rebuild and republish the board (/decision-board).</p>`; });
+
+  function openHash() { if (data) follow(hashLink()); }
+  // ---------- identity (the same block on the ticket board) ----------
+  // claude.use("user") resolves null without a viewer (a local preview): then nobody is matched and the default view
+  // is Everyone. Only the opaque user id is ever written to the db (as `by`), never a name or email.
+  let userReady = false;
+  function pickViewer() {
+    if (!data) return;
+    const st = store.get(VKEY, null), people = data.people || [];
+    if (st && typeof st.v === "string" && (st.v === "" || people.some(p => same(p, st.v)))) viewer = st.v;
+    else viewer = people.find(isMe) || "";
+  }
+  (async () => {
+    let u = null;
+    try { u = window.claude && window.claude.use ? await window.claude.use("user") : null; } catch (e) { u = null; }
+    if (u) {
+      try { ID.me = await u.me(); } catch (e) { ID.me = null; }
+      try { ID.uid = (ID.me && ID.me.id) || (u.id ? await u.id() : null); } catch (e) { ID.uid = null; }
+      try { if (typeof u.can === "function" && (await u.can("data.write")) === false) readOnly = true; } catch (e) {}
+    }
+    userReady = true; pickViewer(); render(false); openHash();
+  })();
+
+  (async () => {
+    const c = window.claude;
+    let s = null;
+    try { s = c && c.use ? await c.use("db") : null; } catch (e) { s = null; }
+    if (!s) { dbState = "none"; renderHead(); return; }
+    await ready; // answers are matched against the loaded decisions
+    db = s; dbState = "ok"; renderHead();
+    db.collection("applied").onSnapshot(snap => { snap.docs.forEach(doc => { applied[doc.id] = doc.data(); }); render(); }, () => {});
+    let first = true;
+    db.collection("decisions").onSnapshot(snap => {
+      const got = new Set(), ed = editingId();
+      snap.docs.forEach(doc => { const b = doc.data(); if (!b) return; const id = doc.id, mine = local[id]; got.add(id); remoteAt[id] = b.updatedAt || "";
+        // Our own write coming back (or what we already hold): acknowledge it, never copy it over local text.
+        if (b.updatedAt && ((mine && b.updatedAt === mine.updatedAt) || (sent[id] && sent[id].has(b.updatedAt)))) { if (mine && b.updatedAt === mine.updatedAt) ack[id] = b.updatedAt; return; }
+        if (!newerThanMine(id, b)) return;              // older than what this tab has
+        if (id === ed) { incoming[id] = b; return; }    // this card is being typed in: apply on blur
+        adopt(id, b); });
+      if (first) { first = false; Object.keys(local).forEach(id => { const m = local[id]; if (!byId[id] || !m || !m.updatedAt) return;
+        // resend what the db is missing or holds an older version of (e.g. typed offline, or the tab closed mid-save)
+        if (got.has(id) ? remoteAt[id] < m.updatedAt : !!m.choice) change(id, {}, { rerender: false }); }); }
+      store.set("dotcortex-decision-board", local); render();
+      if (firstReveal) { const l = firstReveal; firstReveal = null; if (l.d) reveal(l.d); }
+    }, () => { db = null; dbState = "none"; renderHead(); });
+  })();
+})();
+</script>
