@@ -90,6 +90,8 @@ Per-machine values (reviewer CLI paths and models) live in gitignored `.dotcorte
 | `review` | `/fix`, `/implement-review` | opt-in; needs a second model family's CLI |
 | `testing` | Maestro mobile UI automation skill | opt-in |
 | `design` | `/design-implement` — design parity from in-repo design artifacts | opt-in |
+| `boards` | Per-team ticket and decision boards on claude.ai Artifacts: engineers answer agents' questions, close tickets, and decide what gets built | opt-in; needs `pm` |
+| `orchestration` | `/session`: the main session orchestrates while background agents build tickets in per-repo worktrees, from one shared brief | opt-in; needs `pm` |
 | `launch-planning` | MVP scoping and execution lanes | shipped disabled |
 
 ### Stack-detected skills
@@ -110,11 +112,32 @@ Skills load on context keywords. When a closed ticket produced durable learnings
 
 `config.workflow_policy` records who runs tests, who starts servers, whether the agent may create or close tickets, and similar rules as fixed values (for example `test_execution: user_only`, `ticket_creation: followups_only`). The rules block in `CLAUDE.md` is rendered from it; edit the config, not the block. Projects in an org inherit their team's policy.
 
+`crucial_decisions` sets what an agent does when it hits a crucial call: policy, money, security and permissions, public promises, anything hard to reverse. `block` (the default) means nothing gets built for that piece until a person answers; the agent records the question, marks the work blocked, and carries on with anything separable. `build_conservative` builds the least-change option behind a setting and asks.
+
 ## Task Management
 
 > Optional. Chosen during init.
 
 Tickets are markdown files in git. With Linear mode on, commands create and update linked Linear issues through the Linear MCP when it is connected; if it is not connected they stop and ask you to connect it. With Linear off, everything stays in markdown.
+
+The ticket and its Linear issue are different documents. The ticket is the agent's working context: criteria, questions, technical notes, log. The Linear issue is light tracking for people: a title, a one- or two-sentence summary, status, assignee, priority, the team's labels and a pointer back to the ticket. Content never syncs either way; only status, assignee and priority do.
+
+### Ticket core
+
+Every template carries the fields the boards and agents rely on. The rest of a ticket is free-form.
+
+| Field | Meaning |
+|:------|:--------|
+| `**Assignee:**` | The engineer who owns the ticket and answers its questions (claude.ai email or name). Agents never reassign it. |
+| `**Review:**` | `none`, `decision-needed` (someone must answer) or `closure-proposed` (the agent believes it's done) |
+| `- [ ] AC1: …` | Acceptance criteria with stable ids, checked from code and tests, never from log lines |
+| `## Needs from assignee` | `None.`, or numbered questions that each stand on their own, with options, a recommendation and what's built |
+
+Questions an agent needs answered before work can START go into the team's decision log (`decisions/<log>.yml` in the team layer: `team.yml`, or a log per feature when an engineer asks for one). Questions on work in flight are asks on the ticket. One question lives in one place.
+
+### Tech debt
+
+`/debt` keeps long-lived, per-team tech-debt lists (`debt/DEBT-<AREA>-<topic>.md` in the team layer). Entries have stable ids, evidence and a recommended fix; they move to Resolved instead of being deleted. Agents add small recurring problems there instead of opening one-off tickets.
 
 ```
 .dotcortex/tasks/
@@ -146,6 +169,10 @@ Subtasks are letter children (`APP-041a/b/c`). They do not consume counter numbe
 | `/ticket-close <id>` | Verify, archive, update boards, add durable learnings to the team layer when present, update Linear |
 | `/ticket-audit <id>` | Per-ticket audit prompt for an external reviewer |
 | `/todo` | Ordered next-work queue with lanes and parallel-session rules |
+| `/debt` | The team's tech-debt lists: list, add, work a batch, resolve |
+| `/ticket-board` · `/ticket-board-apply` | Publish the team's ticket board; apply engineers' answers and close calls (`boards`) |
+| `/decision-board` · `/decision-board-apply` | Publish the team's decision board; apply the answers (`boards`) |
+| `/session [focus]` | Start an orchestrated working session (`orchestration`) |
 | `/next` · `/backlog` · `/standup` · `/pm` | Recommendations, boards, progress, command index |
 | `/pm-sync` | Pull and push the task repo |
 | `/fix` | Take another agent's review findings, verify each against the tree, fix the confirmed ones |
@@ -157,6 +184,17 @@ Subtasks are letter children (`APP-041a/b/c`). They do not consume counter numbe
 | `/cortex push skill\|command\|knowledge <name>` | Open a PR moving a team asset into the dotcortex base |
 | `/cortex-update` | Update the rendered base from the latest release tag |
 
+## Boards and orchestrated sessions
+
+**Boards** (`boards` pack). Each team gets one ticket board and one decision board, published as claude.ai Artifacts. The URLs are recorded in the team layer's `boards.json`. Each engineer sees their own lane ("Yours": asks for them, tickets of theirs ready to close), matched from their claude.ai identity to the ticket's Assignee or the decision's owner, with a "Viewing as" switch. Answering on the board is the review: apply commands write the answers back into the tickets and decision logs. Share boards with at least "can interact" access, or teammates' answers are refused.
+
+**Orchestrated sessions** (`orchestration` pack). `/session` starts a session where the main agent only plans, reviews, tickets, merges and reports, and background agents each build one ticket:
+- Each agent gets its own worktree per component repo, its own ports and its own test database. The commands come from the team's `knowledge/agent-workspace.md`.
+- Every agent follows one shared brief: isolation, crucial calls, ask format, tests, cleanup, and the shape of its final report.
+- Merges go one branch at a time through an integration worktree. Suites run before every push, and the push is never chained onto the test command.
+- Review findings get at most two fix rounds. What's left becomes a hardening ticket.
+- `git_autonomy` decides whether the orchestrator may merge or push at all.
+
 ## Teams
 
 An org uses one **shared org repo**. It holds each team's context and each project's tickets:
@@ -166,7 +204,10 @@ An org uses one **shared org repo**. It holds each team's context and each proje
 ├── REGISTRY.md                       # team_key | prefix | created
 └── teams/<team_key>/
     ├── skills/  commands/  knowledge/  templates/  memory/
-    ├── policy/workflow_policy.json
+    ├── policy/                       # workflow_policy.json, linear.json, orchestration.json
+    ├── decisions/                    # team.yml + per-feature decision logs (boards read them)
+    ├── debt/                         # long-lived tech-debt lists (/debt)
+    ├── boards.json                   # the team's ticket and decision board URLs
     └── projects/<project_key>/       # that project's task tree
 ```
 
@@ -240,11 +281,11 @@ dotcortex/
 ├── base/                     # Shipped base, by install profile
 │   ├── profiles.json
 │   ├── core/  pm/  review/
-│   └── packs/                # testing, design (opt-in); launch-planning (disabled)
+│   └── packs/                # testing, design, boards, orchestration (opt-in); launch-planning (disabled)
 ├── commands/                 # Bootstrap and lifecycle commands
 ├── schemas/config.schema.json
 ├── scripts/                  # migrate-task-repo.sh, check-debrand.sh, migrate-tasks.sh
-└── tests/run-tests.sh
+└── tests/                    # run-tests.sh (whole suite), boards-test.sh (boards pack, fixtures/boards)
 ```
 
 ## License

@@ -82,6 +82,11 @@ matching the configured value.
 - **Closing tickets** — {{WORKFLOW_POLICY_TICKET_CLOSE}}
   _(`ticket_close`: `auto` → mark DONE and archive without asking | `ask` → propose closure and wait
   for the user)_
+- **Crucial decisions** — {{WORKFLOW_POLICY_CRUCIAL_DECISIONS}}
+  _(`crucial_decisions`: `block` → policy, money, security, public promises and anything hard to
+  reverse are never built until a person answers; the agent records the question, marks the work
+  blocked on it, and continues anything separable | `build_conservative` → build the most
+  conservative, least-change option behind a setting, mark it as built, and ask. Absent = `block`)_
 <!-- END DOTCORTEX:WORKFLOW_POLICY -->
 
 <!-- BEGIN DOTCORTEX:TICKETS -->

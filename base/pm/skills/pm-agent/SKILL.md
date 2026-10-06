@@ -388,6 +388,17 @@ markdown owns spec, acceptance criteria, work log, letter-children, archive, and
 queue. Letter-suffix children (`{{TICKET_PREFIX}}-XXXa/b/c`) are local implementation details —
 **top-level tickets only** get Linear issues.
 
+**Issue content:** the Linear issue and the ticket are different documents. Linear is light
+tracking for people (swimlanes, status, product); the ticket is the agent's working context.
+A Linear issue carries only: the title; a plain-language summary of one or two sentences (what
+changes for users or the team, and why); status, assignee and priority; the team's labels
+(`config.linear.issue_labels`, when set); and a pointer back (the ticket id and its path in the
+task repo). It never carries acceptance criteria, asks, decision details, technical notes, logs,
+file or branch names, or review findings. Content never syncs in either direction: never
+overwrite the Linear description from the ticket, never copy Linear's description into the
+ticket. Only the owned fields above (status, assignment, priority) sync. Create the issue after
+the ticket is drafted, so the summary is written from the finished ticket.
+
 ## Key Behaviors
 
 **Status reporting:** Show grouped by TODO/IN_PROGRESS/DONE with counts

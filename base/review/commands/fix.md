@@ -22,6 +22,23 @@ blocks, numbered lists, prose, ReportFindings JSON, reviewer transcript excerpts
 from another agent** that reviewed work in this workspace; do not ask where they came from. If no
 findings are present anywhere, ask the user to paste them and stop.
 
+## Review depth: two fix rounds at most
+
+A piece of work gets **at most two review → fix rounds**. Count the rounds from the related
+ticket's log (`review fix round N` lines) or from this session. Edge-case hunting has no natural
+end, so the limit is fixed:
+
+- **Rounds 1 and 2:** fix every CONFIRMED finding.
+- **Round 3 and later:** fix only findings a normal user path or a likely failure can trigger: data
+  loss, wrong or double charges, auth or permission bypass, a crash or corruption on the happy path.
+  Every other confirmed finding (rare timing, races, crash-only paths, unlikely input) gets the
+  verdict **DEFER-HARDENING**: it is not fixed here, and the report carries a ready-to-file follow-up
+  ticket for it (title, the findings with file:line, why it was deferred).
+- **Time box:** if fixes on one piece of work have run about an hour, stop, apply the round-3 rule to
+  what's left, and report.
+
+Log the round on the related ticket (`YYYY-MM-DD: review fix round N: <counts by verdict>`).
+
 ## Step 1 — Normalize
 
 Parse the paste into a numbered findings table: `# | file(:line) | claim | severity (blocking /
@@ -75,11 +92,13 @@ gaps go back to a subagent (same lane, one redispatch); trivial residuals you ma
 
 Final message must contain, without being asked:
 
-1. Disposition table: `# | finding | verdict (CONFIRMED-FIXED / STALE / REJECTED / NEEDS-USER) |
-   files touched` — every pasted finding accounted for, none silently dropped
+1. Disposition table: `# | finding | verdict (CONFIRMED-FIXED / STALE / REJECTED / NEEDS-USER /
+   DEFER-HARDENING) | files touched` — every pasted finding accounted for, none silently dropped.
+   State which review round this was.
 2. Rebuttals for REJECTED, decisions needed for NEEDS-USER
 3. Per-component summary of the diff (files + what changed), noting it is uncommitted
 4. Anything an agent declined or a redispatch couldn't close
+5. For DEFER-HARDENING findings: the drafted follow-up ticket, for the user to file
 
 **Never** commit, push, run tests/servers, create tickets, or touch `{{TASKS_DIR}}` state as
 part of this command. If a related open ticket exists, append a one-line work-log entry to it;

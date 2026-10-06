@@ -41,7 +41,7 @@
         },
         "workflow_policy": {
           "type": "object",
-          "description": "Team-scoped behavior policy. Inherited from the team context when connected; interviewed only at team creation. Values are single resolved tokens. All seven fields required — init always writes a complete policy.",
+          "description": "Team-scoped behavior policy. Inherited from the team context when connected; interviewed only at team creation. Values are single resolved tokens. The seven original fields are required — init always writes a complete policy; crucial_decisions is optional (absent means block).",
           "required": ["test_authoring", "test_execution", "server_lifecycle", "endpoint_probing", "documentation_creation", "ticket_creation", "ticket_close"],
           "properties": {
             "test_authoring": { "enum": ["allowed", "ask"] },
@@ -50,7 +50,8 @@
             "endpoint_probing": { "enum": ["allowed", "ask", "user_only"] },
             "documentation_creation": { "enum": ["allowed", "ask"] },
             "ticket_creation": { "enum": ["proactive", "followups_only", "explicit_only"] },
-            "ticket_close": { "enum": ["auto", "ask"] }
+            "ticket_close": { "enum": ["auto", "ask"] },
+            "crucial_decisions": { "enum": ["block", "build_conservative"], "description": "Crucial calls (policy, money, security, public promises, anything hard to reverse): block = build nothing until a person answers; build_conservative = build the least-change option behind a setting and ask." }
           },
           "additionalProperties": false
         },
@@ -68,7 +69,10 @@
         "linear": {
           "type": "object",
           "required": ["enabled"],
-          "properties": { "enabled": { "type": "boolean" } }
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "issue_labels": { "type": "array", "items": { "type": "string" }, "description": "Labels added to every Linear issue a ticket creates. Issues carry only light tracking content (pm-agent, Linear block)." }
+          }
         },
         "task_remote": { "type": "boolean" },
         "task_storage": { "enum": ["same_repo", "gitignored", "separate_repo"] },

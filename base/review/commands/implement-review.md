@@ -78,6 +78,18 @@ substitute for the cross-model review.
 
 Both commands below are a single non-interactive run — no follow-ups, no back-and-forth. Use a generous timeout (10 minutes); a high-reasoning review of a real diff is slow. If the sandboxed shell blocks the CLI's network access, rerun the dispatch with sandbox disabled (it only needs network + read access).
 
+**Running a reviewer CLI reliably:**
+- Run it as a background job the harness tracks (in Claude Code, the Bash tool's `run_in_background`),
+  then wait for its completion notice. Never detach it with `&`: nothing tells you it finished, and the
+  verdict sits unread.
+- Redirect stdin from `/dev/null` (`… < /dev/null`), or a CLI that checks stdin can hang waiting for it.
+- Prefer the CLI's output-file flag (`-o` below). When you only have captured stdout, the answer starts
+  after the **last** line beginning `tokens used`; earlier matches can be file content the reviewer read.
+- Attachments such as image flags (`-i <png>`) go after the prompt argument.
+- macOS has no `timeout` command; rely on the background job instead of wrapping the call.
+- The first time a session depends on the reviewer, smoke-test it with a one-line prompt. If it fails
+  twice, report the review as SKIPPED (below) rather than retrying in a loop.
+
 Review prompt (same for both reviewers — substitute the packet path):
 
 > You are a one-shot senior code reviewer. Read the review packet at `<PACKET_PATH>` — it contains a ticket, an implementation summary, and the full diff. You have read-only access to the repos under the project workspace root to inspect surrounding code. Judge: (1) does the diff satisfy the ticket's acceptance criteria, (2) correctness bugs, (3) violations of conventions visible in surrounding code, (4) anything risky or missing. Do NOT edit anything. Output exactly this structure: `VERDICT: APPROVE | APPROVE WITH NITS | REQUEST CHANGES`, then `BLOCKING:` (numbered, with file:line), then `NON-BLOCKING:` (numbered), then `ACCEPTANCE CRITERIA:` (each criterion → met/not met/can't verify). Be specific and terse.
@@ -122,7 +134,7 @@ Your final report to the user must contain ALL of the following — do not make 
 1. **What was implemented** — summary + per-component file list
 2. **The full diff** (or, if very large, the diff of the core changes plus the packet path for the rest)
 3. **The reviewer's verdict, verbatim** — the whole structured output, clearly attributed (name the reviewing model and its reasoning setting). If the review was SKIPPED, say so plainly at the top of the report along with the missing CLI — never present unreviewed work as reviewed
-4. **Your take on each blocking/non-blocking finding** — agree / disagree and why. Do NOT apply any fixes; the user decides.
+4. **Your take on each blocking/non-blocking finding** — agree / disagree and why. Do NOT apply any fixes; the user decides. If they run `/fix` on the findings, that is review fix round 1 of at most 2 (see `/fix`, "Review depth").
 5. Ticket status + packet/verdict file paths
 
 Arguments: $ARGUMENTS

@@ -7,6 +7,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 ## [Unreleased]
 
 ### Added
+- `boards` pack: per-team ticket board and decision board on claude.ai Artifacts (`/ticket-board`, `/ticket-board-apply`, `/decision-board`, `/decision-board-apply`), with per-viewer "Yours" lanes from claude.ai identity, multi-project ticket keys (`<project>.<ID>`), and team decision logs (`decisions/<log>.yml`, team or per feature, D-numbers unique across logs)
+- `orchestration` pack: `/session`, the `orchestrator` skill, the shared `agent-brief.md`, and the `agent-workspace` knowledge template; per-component worktrees, one integration owner, review gates, `git_autonomy`-aware merging
+- Ticket core in every template: `Assignee`, `Review`, `ACn:` criterion ids, `## Needs from assignee` with self-contained asks
+- `workflow_policy.crucial_decisions` (`block` default, or `build_conservative`), rendered into the CLAUDE.md policy block and asked by `cortex-init` / `init-team`
+- `/debt`: long-lived per-team tech-debt lists in the team layer
+- `linear.issue_labels`, and the Linear block's **Issue content** rule: issues carry only light tracking content
+- `/fix` review depth: two fix rounds at most, then only user-path findings; the rest are deferred to a hardening ticket
+- `/implement-review`: notes for running a reviewer CLI reliably (background job, stdin, output file, smoke test)
+- `init-team` scaffolds `decisions/team.yml`, `debt/`, `policy/orchestration.json` and `policy/linear.json`
+- `check-debrand.sh` scans `.py`, `.html` and `.sh` too, and forbids more project-specific names
 - `/ticket-status <id> <status> [owner]` command — explicit status + assignee transitions with backlog sync and commit
 - `/ticket-implement <id>` command — pre-flight readiness check, mark IN_PROGRESS, then carry out the work described in the ticket
 - `/ticket-audit <id>` command — generate a paste-ready audit prompt (with embedded spec, files, reference patterns, and project rules) for an external reviewer
@@ -17,6 +27,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 - `scripts/migrate-tasks.sh` for manual task migration into `.dotcortex/tasks` with selectable source and mode
 
 ### Changed
+- `/ticket-status` no longer reassigns a ticket to the current git user on every transition; it only sets the Assignee when one is given or the field is missing
+- `/ticket-new` creates the Linear issue once the ticket is drafted, so the summary comes from the finished ticket
+- `/ticket-close` stops while asks or cited decisions are still open
 - `install.sh` now supports install/upgrade mode detection and optional non-interactive `--yes`
 - `install.sh` now bootstraps canonical commands into `.dotcortex/commands` (flattened layout, no `.dotcortex/project/` wrapper)
 - `install.sh` now skips legacy migrations by default; use `--with-migrations` to opt in
