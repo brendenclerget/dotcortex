@@ -14,18 +14,22 @@ Use this for explicit status transitions outside the full close workflow — pic
 
 `/ticket-status <{{TICKET_PREFIX}}-XXX> <STATUS> [OWNER]`
 
-- **STATUS** — one of: `TODO`, `IN_PROGRESS`, `BLOCKED`, `REVIEW`, `DONE`, `BACKLOG`, `PLANNING`
-- **OWNER** — optional. Defaults to the current git user (`git config user.name`).
+- **STATUS** — one of: `TODO`, `IN_PROGRESS`, `BLOCKED`, `REVIEW`, `DONE`, `BACKLOG`, `PLANNING` (`BACKLOG` is legacy: write `TODO`)
+- **OWNER** — optional. Reassigns the ticket when given. Without it the Assignee stays as it is;
+  a ticket with no Assignee gets the current user (their email from `git config user.email`).
 
 ## Step 1: Parse arguments
 
 Split `$ARGUMENTS` into ticket ID, target status, and optional owner. If status is missing or not in the canonical set above, report the allowed values and stop.
 
-If owner is omitted:
+If owner is omitted and the ticket has no `Assignee:` yet:
 
 ```bash
-git config user.name
+git config user.email
 ```
+
+The Assignee is the engineer who owns the ticket and answers its questions. An agent picking up
+work never reassigns it to itself.
 
 ## Step 2: Pull, then locate the ticket
 
@@ -45,9 +49,23 @@ If not found in active tasks, check `{{TASKS_DIR}}/archive/`. If transitioning b
 
 Open the ticket file and update:
 - `Status:` → the new status
-- `Assignee:` → the resolved owner (add the field if missing)
+- `Assignee:` → the owner from Step 1, only when one was given or the field is missing
 - `Updated:` → today's date (YYYY-MM-DD)
 - If status is `DONE`, also set `Completed: YYYY-MM-DD`
+
+**Keep the ticket core accurate** (the boards render from it):
+- **→ IN_PROGRESS / TODO:** `**Review:** none`, unless a question under `## Needs from assignee`
+  is still open (then `decision-needed`).
+- **→ BLOCKED:** name what it waits on: another ticket in `**Depends on:**`, or a question (an open
+  ask with nothing built, or a cited `- Decision: D<n>`). `**Review:** decision-needed` when a
+  person must answer.
+- **Work landed (any status):** check the criteria it met (`- [x] AC2: …`). Partial or deferred
+  work stays unchecked, with the reason on the line. Never check a criterion because a log line
+  says "built"; check it from the code or the test.
+- **→ REVIEW:** `**Review:** closure-proposed` when every criterion is checked (or its deferral is
+  explained on the line), otherwise `decision-needed` with the ask written out.
+- **No open asks left:** Needs says `None.`, and `decision-needed` moves to `none`.
+- Add a dated line to `## Notes / Log`. Any open decisions it waits on: "waiting on D<n>: <title>".
 
 ## Step 4: Handle DONE specially
 
@@ -72,7 +90,7 @@ git -C {{TASKS_DIR}} push || { git -C {{TASKS_DIR}} pull --rebase && git -C {{TA
 
 ## Step 6b: Linear (after the commit)
 
-> **Linear:** If the Linear MCP is available in this session, mirror this status change to the ticket's linked issue (status, and assignment on claim). If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
+> **Linear:** If the Linear MCP is available in this session, mirror this status change to the ticket's linked issue (status, and the assignee when it changed). Nothing else: the ticket's content never goes to Linear (`pm-agent`, Linear block, **Issue content**). If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
 
 A failed issue update leaves a visible pending-sync note in the ticket; the markdown commit stands.
 

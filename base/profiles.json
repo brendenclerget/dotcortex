@@ -27,6 +27,18 @@
       "paths": ["packs/design/"],
       "enabled": false
     },
+    "boards": {
+      "description": "Per-team ticket and decision boards (claude.ai Artifacts): answer agent questions, close tickets, decide what gets built. Requires pm.",
+      "paths": ["packs/boards/"],
+      "enabled": false,
+      "requires": ["pm"]
+    },
+    "orchestration": {
+      "description": "Orchestrator sessions: /session, the orchestrator skill and shared agent brief; background agents build tickets in per-repo worktrees. Requires pm; boards recommended.",
+      "paths": ["packs/orchestration/"],
+      "enabled": false,
+      "requires": ["pm"]
+    },
     "launch-planning": {
       "description": "MVP scoping and execution-lane planning (future pack; /mvp + /mvp-execute pending consolidation).",
       "paths": ["packs/launch-planning/"],

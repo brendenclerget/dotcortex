@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "config": {
+    "prefix": "APP",
+    "tasks_dir": ".dotcortex/tasks",
+    "project_name": "Checkout",
+    "component_repos": [
+      "."
+    ]
+  }
+}

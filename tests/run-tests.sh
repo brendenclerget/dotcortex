@@ -4,6 +4,8 @@
 #   T2  render.sh — determinism, convergence (stale removal), strict atomicity
 #   T3  rebuild-views.sh — resolution, override report, safety (incl. post-marker user files)
 #   T4  install.sh — re-run over correct / broken / wrong symlinked views
+#   T5–T8 shipped payload, end-to-end init, task repo, org checkout
+#   T9  team workflow contracts — ticket core, policy, Linear rule, packs; boards pack tests
 set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -351,7 +353,7 @@ echo "T5: base/ payload renders strict + de-brand"
 STAGE="$WORK/t5/staging"; BOUT="$WORK/t5/out"; mkdir -p "$STAGE"
 # Assemble staging like cortex-init does: enabled profiles + optional packs,
 # commands/skills/templates only (scaffolds are interview templates, not rendered).
-for prof in core pm review packs/testing packs/design; do
+for prof in core pm review packs/testing packs/design packs/boards packs/orchestration; do
   for sub in commands skills templates knowledge; do
     [ -d "$REPO/base/$prof/$sub" ] && { mkdir -p "$STAGE/$sub"; cp -R "$REPO/base/$prof/$sub/" "$STAGE/$sub/"; }
   done
@@ -361,13 +363,14 @@ cat > "$WORK/t5/config.json" <<'EOF'
  "config": {
    "prefix": "APP", "tasks_dir": ".dotcortex/tasks", "project_name": "ExampleProject",
    "component_repos": ["api", "app", "web"],
-   "profiles": ["core", "pm", "review", "testing", "design"],
+   "profiles": ["core", "pm", "review", "testing", "design", "boards", "orchestration"],
    "review": {"reviewer_cli": "reviewer-cli", "reviewer_model": "reviewer-model",
               "coordinator_cli": "coordinator-cli", "coordinator_model": "coordinator-model"},
    "workflow_policy": {"test_authoring": "allowed", "test_execution": "user_only",
      "server_lifecycle": "user_only", "endpoint_probing": "ask",
-     "documentation_creation": "ask", "ticket_creation": "followups_only", "ticket_close": "ask"},
-   "linear": {"enabled": true}}}
+     "documentation_creation": "ask", "ticket_creation": "followups_only", "ticket_close": "ask",
+     "crucial_decisions": "block"},
+   "linear": {"enabled": true, "issue_labels": ["agent-tracked"]}}}
 EOF
 if bash "$REPO/bin/render.sh" --source "$STAGE" --dest "$BOUT" \
      --config "$WORK/t5/config.json" --base-version vTEST --strict >/dev/null 2>"$WORK/t5/err.txt"; then
@@ -403,7 +406,7 @@ python3 - "$REPO/base" "$ISTAGE" <<'EOF'
 import json, os, shutil, sys
 base, stage = sys.argv[1], sys.argv[2]
 srcmap = {}
-for prof in ["core", "pm", "review", "packs/testing", "packs/design"]:
+for prof in ["core", "pm", "review", "packs/testing", "packs/design", "packs/boards", "packs/orchestration"]:
     for sub in ["commands", "skills", "templates", "knowledge"]:
         root = os.path.join(base, prof, sub)
         if not os.path.isdir(root):
@@ -576,6 +579,60 @@ bash "$REPO/install.sh" --yes "$TB" >/dev/null 2>&1
 for c in init-org init-team init-project; do
   assert "bootstrap exposes /$c" test -f "$TB/.dotcortex/commands/$c.md"
 done
+
+# ---------- T9: team workflow contracts ----------
+echo "T9: ticket core, policy, Linear rule, packs"
+for t in simple parent child followup; do
+  T="$REPO/base/pm/templates/$t-ticket-template.md"
+  assert "$t template has Assignee" grep -q '^\*\*Assignee:\*\*' "$T"
+  assert "$t template has Review" grep -q '^\*\*Review:\*\* none | decision-needed | closure-proposed' "$T"
+  assert "$t template has ACn criteria" grep -q -- '- \[ \] AC1:' "$T"
+  assert "$t template has Needs from assignee" grep -qE '^#{2,3} Needs from assignee' "$T"
+done
+assert "ticket-status never reassigns by default" grep -q 'Without it the Assignee stays as it is' "$REPO/base/pm/commands/ticket-status.md"
+assert "ticket-close stops on open asks" grep -q 'Open asks block the close' "$REPO/base/pm/commands/ticket-close.md"
+assert "pm-agent defines Linear issue content" grep -q '^\*\*Issue content:\*\*' "$REPO/base/pm/skills/pm-agent/SKILL.md"
+assert "ticket-new creates the Linear issue after drafting" grep -q 'issue is created in Step 5b, once the ticket is drafted' "$REPO/base/pm/commands/ticket-new.md"
+assert_not "ticket-new posts no criteria to Linear" grep -qi 'post .*acceptance criteria to linear' "$REPO/base/pm/commands/ticket-new.md"
+assert "debt command ships in pm" test -f "$REPO/base/pm/commands/debt.md"
+assert "fix caps review rounds at two" grep -q 'at most two review → fix rounds' "$REPO/base/review/commands/fix.md"
+assert "implement-review documents background reviewer runs" grep -q 'Never detach it with `&`' "$REPO/base/review/commands/implement-review.md"
+assert "CLAUDE.md scaffold renders crucial_decisions" grep -q 'WORKFLOW_POLICY_CRUCIAL_DECISIONS' "$REPO/base/core/scaffolds/CLAUDE.md.template"
+python3 - "$REPO" >"$WORK/t9-schema.txt" 2>&1 <<'PYEOF' && ok "schema accepts crucial_decisions + issue_labels; profiles declare new packs" || { fail "schema accepts crucial_decisions + issue_labels; profiles declare new packs"; sed 's/^/    /' "$WORK/t9-schema.txt"; }
+import json, sys
+repo = sys.argv[1]
+s = json.load(open(f"{repo}/schemas/config.schema.json"))
+wp = s["properties"]["config"]["properties"]["workflow_policy"]
+assert wp["properties"]["crucial_decisions"]["enum"] == ["block", "build_conservative"]
+assert "crucial_decisions" not in wp["required"], "must stay optional for existing installs"
+assert "issue_labels" in s["properties"]["config"]["properties"]["linear"]["properties"]
+p = json.load(open(f"{repo}/base/profiles.json"))["profiles"]
+for k in ("boards", "orchestration"):
+    assert p[k]["enabled"] is False and p[k]["requires"] == ["pm"], k
+    import os
+    assert os.path.isdir(os.path.join(repo, "base", p[k]["paths"][0])), k
+PYEOF
+O="$REPO/base/packs/orchestration"
+assert "orchestrator skill ships" test -f "$O/skills/orchestrator/SKILL.md"
+assert "agent brief ships beside the skill" test -f "$O/skills/orchestrator/agent-brief.md"
+assert "/session command ships" test -f "$O/commands/session.md"
+assert "agent-workspace template ships" test -f "$O/templates/agent-workspace-template.md"
+assert "orchestrator honours git_autonomy" grep -q 'git_autonomy' "$O/skills/orchestrator/SKILL.md"
+assert "orchestrator worktrees are per component repo" grep -q 'Worktrees are per component repo' "$O/skills/orchestrator/SKILL.md"
+assert "orchestrator never chains push onto tests" grep -q 'never chain the push onto a test command' "$O/skills/orchestrator/SKILL.md"
+assert "brief follows the crucial_decisions policy" grep -q 'crucial_decisions' "$O/skills/orchestrator/agent-brief.md"
+assert_not "no hard-coded model attribution in the pack" grep -rqiE 'opus|sonnet|claude-[a-z]+-[0-9]' "$O"
+assert "init-team scaffolds decisions and debt" grep -q 'decisions/team.yml' "$REPO/commands/init-team.md"
+assert "init-team asks crucial_decisions" grep -q 'crucial_decisions' "$REPO/commands/init-team.md"
+if [ -x "$REPO/tests/boards-test.sh" ] || [ -f "$REPO/tests/boards-test.sh" ]; then
+  if bash "$REPO/tests/boards-test.sh" >"$WORK/boards-test.txt" 2>&1; then
+    ok "boards pack tests ($(grep -c '^ *ok:' "$WORK/boards-test.txt") checks)"
+  else
+    fail "boards pack tests"; grep -E 'FAIL|passed:' "$WORK/boards-test.txt" | sed 's/^/    /'
+  fi
+else
+  fail "boards pack tests present (tests/boards-test.sh)"
+fi
 
 echo ""
 echo "passed: $PASS  failed: $FAIL"

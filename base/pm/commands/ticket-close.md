@@ -40,7 +40,11 @@ before the close commit.
 
 If this is a parent ticket with subtasks, verify all subtasks are marked done. If any are still open, report which ones and stop — do not close a parent with open subtasks. **Exception:** if the user explicitly directs closing anyway, proceed but (a) note the exception + the open children in the ticket's Status/Log lines, and (b) keep each open child as a live standalone file in the active tasks dir and surface it in BACKLOG.md's "Orphaned Subtasks" section so it stays tracked.
 
-Before marking DONE, reconcile the parent's **Implementation Checklist** and **Acceptance Criteria** — check off items that are complete based on subtask work, and note any that remain open (these become follow-up scope or are explicitly deferred).
+Before marking DONE, reconcile the ticket's **Acceptance Criteria** (and a parent's **Implementation Checklist**) — check off items that are complete, from the code and tests rather than from log lines, and note any that remain open (these become follow-up scope or are explicitly deferred). A criterion another ticket carries stays unchecked and says so (`; covered by {{TICKET_PREFIX}}-NNN`).
+
+**Open asks block the close.** If `## Needs from assignee` still holds an unanswered ask, or the ticket cites a decision that is still open in the team's decision log, report it and stop: the assignee answers first. A close the assignee made on the ticket board counts as their approval for `ticket_close: ask`.
+
+Set `**Review:** none` as part of this step.
 
 ## Step 3: Update parent (if subtask)
 
@@ -196,7 +200,7 @@ the report rather than reopening the close.
 
 ## Step 8b: Linear (last, after the authoritative commit)
 
-> **Linear:** If the Linear MCP is available in this session, set the ticket's linked issue to Done. If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
+> **Linear:** If the Linear MCP is available in this session, set the ticket's linked issue to Done (status only; the completion summary and knowledge stay in the ticket). If the project config enables Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to connect it (continue markdown-only only at their explicit word). If Linear is not configured, skip this step silently.
 
 If the issue update fails, record a pending-sync note as its own scoped follow-up
 transaction (the archived ticket file is the exact path: `git -C {{TASKS_DIR}} add <archived-ticket> && git -C {{TASKS_DIR}} commit -m "$ARGUMENTS: pending Linear sync" -- <archived-ticket> && git -C {{TASKS_DIR}} push`).

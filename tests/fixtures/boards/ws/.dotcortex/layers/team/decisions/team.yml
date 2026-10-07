@@ -1,0 +1,67 @@
+schema: 1
+log: team
+title: "Checkout team decisions"
+scope: team
+owner: jane@example.com
+updated: "2026-10-05"
+milestones:
+  - {key: launch, title: "Launch", detail: "Public checkout launch"}
+decisions:
+  - id: D1
+    title: "Currency display"
+    question: "Should prices show the currency code next to the symbol?"
+    status: answered
+    answer: "Symbol and code: $12.00 USD"
+    answered_at: "2026-10-02"
+    answered_by: jane@example.com
+    options:
+      - {key: a, label: "Symbol and code (recommended)"}
+      - {key: b, label: "Symbol only"}
+    tickets: [{id: web.APP-001}]
+  - id: D2
+    title: "Refund approval limit"
+    question: "Who approves refunds over $500?"
+    owner: jane@example.com
+    context: "Gates web.APP-004. Money and trust: crucial, so nothing is built until it's answered."
+    status: open
+    priority: high
+    blocks: launch
+    options:
+      - {key: a, label: "A support lead approves (recommended)", detail: "Refunds over $500 wait for a lead."}
+      - {key: b, label: "Any support agent", detail: "No second approval."}
+    tickets: [{id: web.APP-004, criteria: [AC1]}]
+  - id: D3
+    title: "Saved cart expiry"
+    question: "How long should a saved cart last?"
+    owner: bob@example.com
+    status: open
+    blocks: later
+    deferred_at: "2026-10-03"
+    deferred_note: "After launch"
+    default_built: "Saved carts last 30 days."
+    options:
+      - {key: a, label: "30 days", built: true}
+      - {key: b, label: "90 days"}
+    tickets: [{id: web.APP-002}]
+  - id: D4
+    title: "Refund limit (first draft)"
+    question: "Should refunds over $1000 need approval?"
+    status: superseded
+    superseded_by: D2
+  - id: D5
+    title: "Retry backoff"
+    question: "Is the webhook retry backoff (1m, 5m, 30m) right?"
+    owner: bob@example.com
+    status: open
+    blocks: later
+    default_built: "Retries back off 1m, 5m, 30m, then stop."
+    tickets: [{id: api.APP-003}]
+  - id: D6
+    title: "Cart badge colour"
+    question: "Should the cart badge use the accent colour?"
+    owner: jane@example.com
+    status: open
+    blocks: later
+    options:
+      - {key: a, label: "Accent"}
+      - {key: b, label: "Neutral"}

@@ -21,11 +21,13 @@ FORBIDDEN=(
   '/Users/[a-z]'
   'marketing-site'
   'Gluestack' 'TCGPlayer' 'tcgplayer'
+  'ohbeo' 'OBO-[0-9]' '\bfounders?\b' 'gpt-6-astra' '\bAstra\b' 'Fable 5' 'Manrope'
 )
 
 fail=0
 for pattern in "${FORBIDDEN[@]}"; do
-  if hits=$(grep -rniE "$pattern" "$@" --include='*.md' --include='*.yaml' --include='*.yml' --include='*.json' 2>/dev/null); then
+  if hits=$(grep -rniE "$pattern" "$@" --include='*.md' --include='*.yaml' --include='*.yml' --include='*.json' \
+             --include='*.py' --include='*.html' --include='*.sh' 2>/dev/null); then
     echo "FORBIDDEN TOKEN: $pattern"
     echo "$hits" | head -10
     fail=1

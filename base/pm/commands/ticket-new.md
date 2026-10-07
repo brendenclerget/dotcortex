@@ -22,13 +22,13 @@ Create a parent ticket for: $ARGUMENTS
 
 ## Step 1: Establish the ticket identity
 
-**Linear:** If the Linear MCP is available in this session, create the Linear issue
-first and use its identifier to name the ticket — the markdown file and every
-reference below take that identifier instead of an allocated counter number, and the
-counter is left untouched. If the project config enables Linear (`config.linear.enabled`)
-but the MCP is not connected, pause and ask the user to connect it (continue
-markdown-only only at their explicit word). If Linear is not configured, skip this step
-silently and allocate a number from the counter as described next.
+**Linear:** If the Linear MCP is available in this session, the ticket is named after a
+Linear issue instead of an allocated counter number (the counter is left untouched). The
+issue is created in Step 5b, once the ticket is drafted, so its summary is written from
+the finished ticket (see **Linear issue content** below). If the project config enables
+Linear (`config.linear.enabled`) but the MCP is not connected, pause and ask the user to
+connect it (continue markdown-only only at their explicit word). If Linear is not
+configured, skip it silently and allocate a number from the counter in Step 5b.
 
 **Pure-markdown mode: allocation is DEFERRED.** Do not touch the counter now. Draft
 the complete ticket content first (Steps 2–5), using `XXX` as an ID placeholder; the
@@ -36,8 +36,12 @@ allocation transaction in Step 5b turns the draft into a numbered file. Never re
 the counter early and write it later — a gap between read and push hands two
 sessions the same number.
 
-**This step establishes IDENTITY only** (a Linear issue, or "deferred to Step 5b").
-No file is created here — the ticket file lands inside the Step 5b transaction.
+**This step decides the identity source only** (a Linear issue or the counter, both resolved
+in Step 5b). No file is created here — the ticket file lands inside the Step 5b transaction.
+
+**Linear issue content** follows the `pm-agent` skill's Linear block (**Issue content**): the
+title, a one- or two-sentence plain summary, status, assignee, priority, team labels and a pointer
+back to the ticket. Never the criteria, asks, decisions, technical notes or logs.
 
 ## Step 2: Gather feature requirements
 
@@ -45,6 +49,8 @@ Ask user:
 - Overview of feature (what and why)
 - User stories (who wants what benefit)
 - Priority (HIGH/MEDIUM/LOW)
+- Assignee: the engineer who owns it and answers its questions (their email, or their name as it
+  appears on claude.ai). Default: the user running this session. Agents never change it later.
 - Any specific requirements or constraints
 - **Why this needs breakdown** (confirm it's not just a single ticket)
 
@@ -76,7 +82,16 @@ cat .dotcortex/templates/parent-ticket-template.md
 ```
 
 **Include:**
-- Feature specification section (overview, user stories, acceptance criteria)
+- The ticket core every board reads: `**Assignee:**`, `**Review:** none`, acceptance criteria as
+  `- [ ] AC1: …` with stable ids (never renumbered; a new criterion takes the next number) that
+  are observable outcomes, and `## Needs from assignee` saying `None.` (or explicit asks, in the
+  template's format). A parent's criteria are outcomes of the whole feature, not "all subtasks done".
+- Questions the work can't START without go into the team's decision log
+  (`.dotcortex/layers/team/decisions/<log>.yml`, `team.yml` unless the engineer asked for a
+  feature log) as open entries, and the ticket cites each one as `- Decision: D<n>` under Needs.
+  Crucial calls (policy, money, security, public promises, anything hard to reverse) are never
+  settled by the agent; follow `workflow_policy.crucial_decisions` (CLAUDE.md).
+- Feature specification section (overview, user stories)
 - Technical design (data models, UI/UX, dependencies)
 - Testing plan
 - Subtasks section (to be filled in step 5)
@@ -98,7 +113,10 @@ Ask: "Should I break this into subtasks?"
 - Move parent ticket into the folder
 - Identify 3-5 implementation steps
 - Name subtasks with letter suffixes: {{TICKET_PREFIX}}-XXXa, {{TICKET_PREFIX}}-XXXb, {{TICKET_PREFIX}}-XXXc, etc.
-- Create child ticket for each: `{{TASKS_DIR}}/{{TICKET_PREFIX}}-XXX/{{TICKET_PREFIX}}-XXXa-description.md`
+- Create child ticket for each from `.dotcortex/templates/child-ticket-template.md`:
+  `{{TASKS_DIR}}/{{TICKET_PREFIX}}-XXX/{{TICKET_PREFIX}}-XXXa-description.md`, with `**Type:** SUBTASK`,
+  `**Parent:** {{TICKET_PREFIX}}-XXX` (authoritative: boards derive the family from it), the parent's
+  Assignee unless the user names another, `**Review:** none`, and its own `ACn` criteria
 - **Do NOT read or increment the ticket counter for subtasks** — letter subtasks don't
   consume numbers, and they get no Linear issue (top-level tickets only)
 - Link children in parent ticket
@@ -189,10 +207,12 @@ skip the pull and push lines; the commit alone completes the transaction.
 
 Letter subtasks created here ride inside the same transaction (same family folder,
 same commit) — they consume no counter numbers and never get their own transaction.
-In Linear mode the ID came from Linear in Step 1; the same transaction applies minus
-the counter lines.
+**Linear mode:** create the Linear issue first, inside the lock, with only the content
+allowed above, then run the same transaction with `TICKET` = the issue identifier and without
+the counter lines. If the transaction exhausts its attempts, say that the Linear issue exists
+without a ticket file and give its identifier.
 
-**Update parent ticket with subtask list:**
+**Update parent ticket with subtask list** (checked against the children's `Parent:` fields):
 ```markdown
 ### Subtasks
 - [ ] {{TICKET_PREFIX}}-XXXa: First step description

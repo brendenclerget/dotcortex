@@ -22,12 +22,18 @@ Break down ticket $ARGUMENTS into implementation steps.
    - Move the parent ticket into the folder if needed
    - Identify 3-7 steps
    - Name subtasks as `$ARGUMENTS`a, `$ARGUMENTS`b, `$ARGUMENTS`c, etc. (e.g., {{TICKET_PREFIX}}-112a, {{TICKET_PREFIX}}-112b, {{TICKET_PREFIX}}-112c)
-   - Create child ticket for each: `{{TASKS_DIR}}/$ARGUMENTS/$ARGUMENTSa-description.md`
+   - Create child ticket for each from `.dotcortex/templates/child-ticket-template.md`:
+     `{{TASKS_DIR}}/$ARGUMENTS/$ARGUMENTSa-description.md`. Each child carries `**Type:** SUBTASK`,
+     `**Parent:** $ARGUMENTS` (authoritative: the boards derive the family from it), the parent's
+     Assignee unless the user names another, `**Review:** none`, its own `- [ ] AC1: …` criteria, and
+     `## Needs from assignee` saying `None.`
    - **Never read, increment, or write `.ticket_counter`** — letter children consume no ticket numbers, and no new top-level number is ever allocated by a breakdown. Subtasks are always letter children of `$ARGUMENTS`.
 
 4. **Update parent ticket:**
    - Change Type to PARENT
-   - Add subtasks section:
+   - Keep the parent's own acceptance criteria; they are separate from the children's and are not
+     met just because every child is done
+   - Add subtasks section (checked against the children's `Parent:` fields):
 ```markdown
    ### Subtasks
    - [ ] $ARGUMENTSa: Step 1

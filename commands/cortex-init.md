@@ -316,15 +316,16 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 
 **Q15: Workflow policy** (asked AFTER Q13/Q14 so team-context connection is already resolved — when Q13 connected an existing team context, INHERIT the team's policy and SKIP this question entirely; ask only for fresh/standalone setups)
 - Question: "Who runs what? (These render into CLAUDE.md's workflow rules.)"
-- Collect single-select values for: `test_authoring` (allowed/ask), `test_execution` (allowed/ask/user_only), `server_lifecycle` (allowed/ask/user_only), `endpoint_probing` (allowed/ask/user_only), `documentation_creation` (allowed/ask), `ticket_creation` (proactive/followups_only/explicit_only), `ticket_close` (auto/ask)
-- Defaults (non-interactive): allowed / allowed / ask / allowed / ask / followups_only / ask
+- Collect single-select values for: `test_authoring` (allowed/ask), `test_execution` (allowed/ask/user_only), `server_lifecycle` (allowed/ask/user_only), `endpoint_probing` (allowed/ask/user_only), `documentation_creation` (allowed/ask), `ticket_creation` (proactive/followups_only/explicit_only), `ticket_close` (auto/ask), `crucial_decisions` (block/build_conservative)
+- `crucial_decisions` asks: "When an agent hits a crucial call (policy, money, security, public promises, anything hard to reverse), should it stop and wait for a person (block), or build the most conservative option behind a setting and ask (build_conservative)?" Recommend `block` for teams; `build_conservative` suits a solo owner who reviews in batches.
+- Defaults (non-interactive): allowed / allowed / ask / allowed / ask / followups_only / ask / block
 - Store under `config.workflow_policy` (validated by `schemas/config.schema.json`); the CLAUDE.md `WORKFLOW_POLICY` marker block renders from these values — never hand-edited.
 
 
 **Q16: Linear** (only if Q5 = full PM)
 - Question: "Attach tickets to Linear issues via the Linear MCP?"
 - Options: "Yes — Linear is our tracker" / "No — markdown only"
-- If yes: set `config.linear.enabled = true`. Commands use the Linear MCP when it's connected in a session, prompt the user to connect it when enabled-but-absent, and skip silently when disabled. No further Linear setup happens at init.
+- If yes: set `config.linear.enabled = true`, and ask for labels every issue should carry (optional → `config.linear.issue_labels`). Commands use the Linear MCP when it's connected in a session, prompt the user to connect it when enabled-but-absent, and skip silently when disabled. Linear issues carry only light tracking content (title, a short summary, status, assignee, priority, labels, a pointer to the ticket); the ticket keeps the agent's working context (`pm-agent`, Linear block, **Issue content**). No further Linear setup happens at init.
 
 
 **Q17: Cross-model review** (single select)
@@ -344,8 +345,11 @@ There is exactly ONE sync contract when a remote exists (no modes): **every task
 - Options:
   - "testing — Maestro mobile UI automation skill"
   - "design — /design-implement code-first design parity"
+  - "boards — per-team ticket and decision boards on claude.ai Artifacts (requires full PM)"
+  - "orchestration — /session: an orchestrator dispatching background agents into per-repo worktrees (requires full PM; boards recommended)"
   - "None"
-- Selected packs join the Phase 4.5 staging and `config.profiles`. (`launch-planning` is future/disabled and is NOT offered.)
+- Selected packs join the Phase 4.5 staging and `config.profiles`. A pack whose `requires` (in `base/profiles.json`) isn't selected is not offered. (`launch-planning` is future/disabled and is NOT offered.)
+- **orchestration selected:** the team layer needs `knowledge/agent-workspace.md` (per-repo install, test and server commands, agent ports, test-database isolation, generated and shared files). If it doesn't exist, draft it from `.dotcortex/templates/agent-workspace-template.md` and the Phase 1 scan, show it, and write it with the other team-layer knowledge in Phase 4.3. Also write `policy/orchestration.json` in the team layer if missing: `{"worktree_root": "../<workspace>-wt", "branch_prefix": "agent/", "max_agents": 4}`.
 
 
 ## Phase 3: Stack Research & Skill Generation
@@ -652,7 +656,8 @@ The file must be **valid JSON** (no comments) and validate against `schemas/conf
       "endpoint_probing": "ask",
       "documentation_creation": "ask",
       "ticket_creation": "followups_only",
-      "ticket_close": "ask"
+      "ticket_close": "ask",
+      "crucial_decisions": "block"
     },
     "linear": { "enabled": false },
     "git_tracking": {
@@ -675,7 +680,9 @@ If Q13 selected "create new team context repo", scaffold the TEAM layer (two-lay
 - `skills/`
 - `knowledge/`
 - `templates/`
-- `policy/` (the team workflow_policy lives here)
+- `policy/` (the team workflow_policy lives here; `orchestration.json` too when that pack is used)
+- `decisions/` (team decision logs: `team.yml`, plus per-feature logs on request)
+- `debt/` (long-lived tech-debt lists, `/debt`)
 - `memory/` (team MEMORY.md index)
 
 Record it in config as `context_repo: {url, checkout_path: ".dotcortex/layers/team", branch, team_key}` — never `org.project_key` or project-scoped context paths. Tasks are NOT part of the context repo (task repo is separate; see task_repo config).
