@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Se
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-06
+
 ### Added
 - `boards` pack: per-team ticket board and decision board on claude.ai Artifacts (`/ticket-board`, `/ticket-board-apply`, `/decision-board`, `/decision-board-apply`), with per-viewer "Yours" lanes from claude.ai identity, multi-project ticket keys (`<project>.<ID>`), and team decision logs (`decisions/<log>.yml`, team or per feature, D-numbers unique across logs)
 - `orchestration` pack: `/session`, the `orchestrator` skill, the shared `agent-brief.md`, and the `agent-workspace` knowledge template; per-component worktrees, one integration owner, review gates, `git_autonomy`-aware merging
